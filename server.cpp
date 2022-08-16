@@ -154,7 +154,7 @@ static constexpr const char* login_page_html = R"(
             <input type="submit" value="register"/>
             <p class="message">Already registered? <a href="#">Sign In</a></p>
         </form>
-        <form class="login-form" method="POST" action="/login">
+        <form class="login-form" method="POST" action="/login" autocomplete="on">
             <input type="text" placeholder="username"/>
             <input type="password" placeholder="password"/>
             <input type="submit" value="login"/>
