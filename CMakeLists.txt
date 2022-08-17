@@ -11,6 +11,6 @@ if (DEFINED APPNAME)
     add_compile_definitions(APPNAME="${APPNAME}")
 endif ()
 
-add_executable(filestorage main.cpp server.h server.cpp constants.hpp)
+add_executable(filestorage main.cpp server.h server.cpp constants.hpp resources.hpp)
 
 target_link_libraries(filestorage mariadb mariadbcpp)

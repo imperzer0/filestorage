@@ -1,8 +1,14 @@
 /src/
 /pkg/
 /*.pkg.tar.zst
+
+# mongoose lib
 /mongoose.c
 /mongoose.h
 
+# strscan lib
+/strscan.c
+/strscan.h
+
 # Project exclude paths
-/cmake-build-debug/
+/cmake-build-*/

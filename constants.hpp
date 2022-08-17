@@ -38,6 +38,10 @@
 #  define MAX_PASSWORD 255
 # endif
 
+# ifndef PASSWD_HASH_TYPE
+#  define PASSWD_HASH_TYPE passwd_sha_512
+# endif
+
 # ifndef DEFAULT_SERVER_ADDRESS
 #  define DEFAULT_SERVER_ADDRESS "http://0.0.0.0:80"
 # endif
