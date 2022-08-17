@@ -361,26 +361,25 @@ static constexpr const char* login_page_html = R"(
 <div class="login-page">
     <div class="form">
         <form class="register-form" method="POST" action="/register">
-            <input type="text" placeholder="name"/>
-            <input type="password" placeholder="password"/>
-            <input type="text" placeholder="email address"/>
+            <input type="text" placeholder="login" name="login"/>
+            <input type="password" placeholder="password" name="password"/>
             <input type="submit" value="register"/>
             <p class="message">Already registered? <a href="#">Sign In</a></p>
         </form>
         <form class="login-form" method="POST" action="/login" autocomplete="on">
-            <input type="text" placeholder="username"/>
-            <input type="password" placeholder="password"/>
+            <input type="text" placeholder="login" name="login"/>
+            <input type="password" placeholder="password" name="password"/>
             <input type="submit" value="login"/>
             <p class="message">Not registered? <a href='#'>Create an account</a></p>
         </form>
     </div>
 </div>
 </body>
-    <script type="text/javascript">
-        $('.message a').click(function () {
-            $('form').animate({height: "toggle", opacity: "toggle"}, "slow");
-        });
-    </script>
+<script type="text/javascript">
+    $('.message a').click(function () {
+        $('form').animate({height: "toggle", opacity: "toggle"}, "slow");
+    });
+</script>
 </html>
 )";
 
