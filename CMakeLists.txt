@@ -12,3 +12,5 @@ if (DEFINED APPNAME)
 endif ()
 
 add_executable(filestorage main.cpp server.h server.cpp constants.hpp)
+
+target_link_libraries(filestorage mariadb mariadbcpp)

@@ -11,31 +11,35 @@
 
 
 # ifndef VERSION
-#  define VERSION "<git>"
+#  define VERSION "(devel)"
 # endif
 
 # ifndef APPNAME
 #  define APPNAME "filestorage"
 # endif
 
-# ifndef COUNTRY
-#  define COUNTRY "UA"
+# ifndef DB_USER_NAME
+#  define DB_USER_NAME "filestorage"
 # endif
 
-# ifndef ORGANIZATION
-#  define ORGANIZATION "imper"
+# ifndef DB_NAME
+#  define DB_NAME "filestorage"
 # endif
 
-# ifndef CERTIFICATE_NAME
-#  define CERTIFICATE_NAME "imper"
+# ifndef TABLE_NAME
+#  define TABLE_NAME "users"
 # endif
 
-# ifndef DEFAULT_PORT
-#  define DEFAULT_PORT 144
+# ifndef MAX_LOGIN
+#  define MAX_LOGIN 63
+# endif
+
+# ifndef MAX_PASSWORD
+#  define MAX_PASSWORD 255
 # endif
 
 # ifndef DEFAULT_SERVER_ADDRESS
-#  define DEFAULT_SERVER_ADDRESS INADDR_ANY
+#  define DEFAULT_SERVER_ADDRESS "http://0.0.0.0:80"
 # endif
 
 

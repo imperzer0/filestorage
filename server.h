@@ -17,8 +17,10 @@ extern const char* directory;
 extern const char* pattern;
 extern int hexdump;
 
-extern void initialize_server();
+extern void server_initialize(const char* database_user_password);
 
-extern void run_server();
+extern void server_run(const char* database_user_password);
+
+extern void server_destroy_database(const char* database_user_password);
 
 #endif //FILESTORAGE_SERVER_H
