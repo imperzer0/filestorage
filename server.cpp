@@ -147,9 +147,10 @@ void client_handler(struct mg_connection* connection, int ev, void* ev_data, voi
 				auto dir_rel_dirname = path_dirname(dir_rel);
 				
 				mg_http_reply(
-						connection, 200, "Content-Type: text/html\r\n",
-						explorer_page_html, dir_rel_dirname, dir_rel_dirname, login, password, dir_rel_dirname,
-						dir_rel_dirname, path_basename(dir_rel), dir,
+						connection, 200, "Content-Type: text/html\r\n", explorer_page_html,
+						dir_rel_dirname, dir_rel_dirname, login, password,
+						dir_rel_dirname, dir_rel_dirname, path_basename(dir_rel),
+						dir_rel, dir_rel, login, password, dir_rel,
 						directory_list_html(dir_rel, dir, login, password)
 				);
 				

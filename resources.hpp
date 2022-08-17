@@ -1085,7 +1085,7 @@ static constexpr const char* explorer_page_html = R"(
             }
         }
 
-        .filemanager .add {
+        .filemanager .operation {
             position: absolute;
             padding-right: 30px;
             cursor: pointer;
@@ -1114,7 +1114,12 @@ static constexpr const char* explorer_page_html = R"(
         </span>
     </div>
 
-    <a href="/upload/%s" class="add">+</a>
+    <form method="POST" action="/upload/%s" style="display: none;" id="forwardform-upload%s">
+        <input type="text" name="login" value="%s"/>
+        <input type="password" name="password" value="%s"/>
+    </form>
+
+    <a class="operation" onclick="document.getElementById('forwardform-upload%s').submit();">+</a>
 
     %s
 
