@@ -45,11 +45,26 @@ typedef struct
 } statistics;
 
 
-typedef const char* (* prepare_function)(const char* dir);
-
 statistics directory_count(const char* dir);
 
-std::string directory_list_html(const char* dir, const char* dir_abs, const char* login, const char* password);
+
+typedef char* (* prepare_function)(char* path, char* path_abs, const char* login, const char* password);
+
+
+char* deleter_file_prepare_html(char* file, char* file_abs, const char* login, const char* password);
+
+char* explorer_file_prepare_html(char* file, char* file_abs, const char* login, const char* password);
+
+char* deleter_directory_prepare_html(char* dir, char* dir_abs, const char* login, const char* password);
+
+char* explorer_directory_prepare_html(char* dir, char* dir_abs, const char* login, const char* password);
+
+
+std::string directory_list_html(
+		const char* dir, const char* dir_abs, const char* login, const char* password,
+		prepare_function prepare_dir, prepare_function prepare_file
+);
+
 
 
 int starts_with(const char* str, const char* prefix);
@@ -249,7 +264,11 @@ void client_handler(struct mg_connection* connection, int ev, void* ev_data, voi
 						dir_rel_dirname, dir_rel_dirname, login, password,
 						dir_rel_dirname, dir_rel_dirname, path_basename(dir_rel),
 						dir_rel, dir_rel, login, password, dir_rel,
-						directory_list_html(dir_rel, dir, login, password).c_str()
+						dir_rel, dir_rel, login, password, dir_rel,
+						directory_list_html(
+								dir_rel, dir, login, password,
+								explorer_directory_prepare_html, explorer_file_prepare_html
+						).c_str()
 				);
 				
 				delete[] dir_rel_dirname;
@@ -266,8 +285,116 @@ void client_handler(struct mg_connection* connection, int ev, void* ev_data, voi
 				delete[] curr_url;
 			}
 		}
+		else if (starts_with(msg->uri.ptr, "/deleter/"))
+		{
+			char login[MAX_LOGIN]{ }, password[MAX_PASSWORD]{ };
+			mg_http_get_var(&msg->body, "login", login, MAX_LOGIN);
+			mg_http_get_var(&msg->body, "password", password, MAX_PASSWORD);
+			
+			auto conn = mariadb_connect_to_db(database_user_password);
+			auto db_password = mariadb_user_get_password(conn.get(), login);
+			if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
+			{
+				char* dir_rel;
+				auto dir = new char[msg->uri.len + MAX_LOGIN]{ };
+				
+				char* uri = new char[msg->uri.len + 1];
+				strncpy(uri, msg->uri.ptr, msg->uri.len);
+				uri[msg->uri.len] = 0;
+				
+				strscanf(uri, "/deleter/%s", &dir_rel);
+				sprintf(dir, "%s%s", login, dir_rel);
+				
+				delete[] uri;
+				
+				std::string path("./");
+				path += dir;
+				
+				struct stat st{ };
+				if (::stat(path.c_str(), &st) < 0)
+				{
+					mg_http_reply(connection, 404, "Content-Type: text/html\r\n", error_404_html);
+					
+					delete[] dir;
+					delete[] dir_rel;
+					return;
+				}
+				
+				if (S_ISREG(st.st_mode))
+				{
+					struct mg_http_serve_opts opts{ };
+					mg_http_serve_file(connection, msg, path.c_str(), &opts);
+					
+					delete[] dir;
+					delete[] dir_rel;
+					return;
+				}
+				
+				auto dir_rel_dirname = path_dirname(dir_rel);
+				
+				mg_http_reply(
+						connection, 200, "Content-Type: text/html\r\n", deleter_page_html,
+						dir_rel, dir_rel, dir_rel, login, password, dir_rel,
+						directory_list_html(
+								dir_rel, dir, login, password,
+								deleter_directory_prepare_html, deleter_file_prepare_html
+						).c_str()
+				);
+				
+				delete[] dir_rel_dirname;
+				delete[] dir_rel;
+				delete[] dir;
+			}
+			else
+			{
+				char* curr_url = new char[msg->uri.len * 3]{ };
+				mg_url_encode(msg->uri.ptr, msg->uri.len, curr_url, msg->uri.len * 3 - 1);
+				
+				http_redirect_to(connection, "/?return_to=%s", curr_url);
+				
+				delete[] curr_url;
+			}
+		}
+		else if (starts_with(msg->uri.ptr, "/delete/"))
+		{
+			char login[MAX_LOGIN]{ }, password[MAX_PASSWORD]{ };
+			mg_http_get_var(&msg->body, "login", login, MAX_LOGIN);
+			mg_http_get_var(&msg->body, "password", password, MAX_PASSWORD);
+			
+			auto conn = mariadb_connect_to_db(database_user_password);
+			auto db_password = mariadb_user_get_password(conn.get(), login);
+			if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
+			{
+				char* dir_rel;
+				auto dir = new char[msg->uri.len + MAX_LOGIN]{ };
+				
+				char* uri = new char[msg->uri.len + 1];
+				strncpy(uri, msg->uri.ptr, msg->uri.len);
+				uri[msg->uri.len] = 0;
+				
+				strscanf(uri, "/delete/%s", &dir_rel);
+				sprintf(dir, "%s%s", login, dir_rel);
+				
+				delete[] uri;
+				
+				std::string path("./");
+				path += dir;
+				
+				struct stat st{ };
+				if (::stat(path.c_str(), &st) < 0)
+				{
+					delete[] dir;
+					delete[] dir_rel;
+					return;
+				}
+				
+				system(("rm -rf '" + path + "'").c_str());
+				
+				delete[] dir_rel;
+				delete[] dir;
+			}
+		}
 		else mg_http_reply(connection, 404, "Content-Type: text/html\r\n", error_404_html);
-		
 	}
 }
 
@@ -497,14 +624,6 @@ statistics directory_count(const char* dir)
 	return result;
 }
 
-const char* directory_prepare_html(char* dir, const char* dir_abs, const char* login, const char* password)
-{
-	statistics st = directory_count(dir_abs);
-	char* html = new char[static_strlen(explorer_dir_html) + 2088];
-	sprintf(html, explorer_dir_html, dir, dir, login, password, dir, dir, basename(dir), st.files, st.folders);
-	return html;
-}
-
 const char* get_filename_ext(const char* filename)
 {
 	const char* dot = nullptr;
@@ -516,17 +635,51 @@ const char* get_filename_ext(const char* filename)
 	return dot + 1;
 }
 
-char* file_prepare_html(char* file, const char* file_abs, const char* login, const char* password)
+char* explorer_directory_prepare_html(char* dir, char* dir_abs, const char* login, const char* password)
+{
+	statistics st = directory_count(dir_abs);
+	char* html = new char[static_strlen(explorer_dir_html) + 2088];
+	sprintf(html, explorer_dir_html, dir, dir, login, password, dir, dir, path_basename(dir), st.files, st.folders);
+	return html;
+}
+
+char* explorer_file_prepare_html(char* file, char* file_abs, const char* login, const char* password)
 {
 	struct stat st{ };
 	stat((std::string("./") + file_abs).c_str(), &st);
 	char* html = new char[static_strlen(explorer_file_html) + 2088];
 	auto ext = get_filename_ext(file);
-	sprintf(html, explorer_file_html, file, file, login, password, file, file, ext, ext, basename(file), st.st_size);
+	sprintf(html, explorer_file_html, file, file, login, password, file, file, ext, ext, path_basename(file), st.st_size);
 	return html;
 }
 
-std::string directory_list_html(const char* dir, const char* dir_abs, const char* login, const char* password)
+char* deleter_directory_prepare_html(char* dir, char* dir_abs, const char* login, const char* password)
+{
+	statistics st = directory_count(dir_abs);
+	char* html = new char[static_strlen(explorer_dir_html) + 2088];
+	char* dir_dirname = path_dirname(dir);
+	sprintf(html, deleter_dir_html, dir, dir, login, password, dir_dirname, login, password, path_basename(dir), st.files, st.folders);
+	delete[] dir_dirname;
+	return html;
+}
+
+
+char* deleter_file_prepare_html(char* file, char* file_abs, const char* login, const char* password)
+{
+	struct stat st{ };
+	stat((std::string("./") + file_abs).c_str(), &st);
+	char* html = new char[static_strlen(explorer_file_html) + 2088];
+	auto ext = get_filename_ext(file);
+	char* file_dirname = path_dirname(file);
+	sprintf(html, deleter_file_html, file, file, login, password, file_dirname, login, password, ext, ext, path_basename(file), st.st_size);
+	delete[] file_dirname;
+	return html;
+}
+
+std::string directory_list_html(
+		const char* dir, const char* dir_abs, const char* login, const char* password,
+		prepare_function prepare_dir, prepare_function prepare_file
+)
 {
 	if (directory_count(dir_abs).total <= 0)
 		return explorer_dir_empty_html;
@@ -551,7 +704,7 @@ std::string directory_list_html(const char* dir, const char* dir_abs, const char
 			char* fullpath_abs = new char[strlen(dir_abs) + 1 + strlen(entry->d_name)]{ };
 			sprintf(fullpath_abs, "%s/%s", dir_abs, entry->d_name);
 			
-			auto html = directory_prepare_html(fullpath, fullpath_abs, login, password);
+			auto html = prepare_dir(fullpath, fullpath_abs, login, password);
 			result += html;
 			
 			delete[] html;
@@ -566,7 +719,7 @@ std::string directory_list_html(const char* dir, const char* dir_abs, const char
 			char* fullpath_abs = new char[strlen(dir_abs) + 1 + strlen(entry->d_name)]{ };
 			sprintf(fullpath_abs, "%s/%s", dir_abs, entry->d_name);
 			
-			auto html = file_prepare_html(fullpath, fullpath_abs, login, password);
+			auto html = prepare_file(fullpath, fullpath_abs, login, password);
 			result += html;
 			
 			delete[] html;
