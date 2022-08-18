@@ -3,14 +3,12 @@
 #include <getopt.h>
 
 
-static constexpr const char* short_args = "p:a:l:d:P:DHvh";
+static constexpr const char* short_args = "p:a:l:d:Hvh";
 static constexpr struct option long_args[] = {
 		{ "password",   required_argument, nullptr, 'p' },
 		{ "address",    required_argument, nullptr, 'a' },
 		{ "loglevel",   required_argument, nullptr, 'l' },
-		{ "dir",        required_argument, nullptr, 'd' },
-		{ "pattern",    required_argument, nullptr, 'P' },
-		{ "destroy-db", no_argument,       nullptr, 'D' },
+		{ "destroy-db", no_argument,       nullptr, 'd' },
 		{ "hexdump",    no_argument,       nullptr, 'H' },
 		{ "version",    no_argument,       nullptr, 'v' },
 		{ "help",       no_argument,       nullptr, 'h' },
@@ -27,9 +25,7 @@ inline static void help()
 	::printf(" --password   | p  <password>  Database user's password.\n");
 	::printf(" --address    | a  <address>   Listening address. Default: %s\n", address);
 	::printf(" --loglevel   | l  <level>     Set log level (from 0 to 4). Default: %s\n", log_level);
-	::printf(" --dir        | d  <dir>       Server directory. Default: %s\n", directory);
-	::printf(" --pattern    | P  <pattern>   SSI filename pattern. Default: %s\n", pattern);
-	::printf(" --destroy-db | D              Destroy server's database using given password and username=" DB_USER_NAME "\n");
+	::printf(" --destroy-db | d              Destroy server's database using given password and username=" DB_USER_NAME "\n");
 	::printf(" --hexdump    | H              Enable hex dump.\n");
 	::printf(" --version    | v              Show version information.\n");
 	::printf(" --help       | h              Show this help message.\n");
@@ -56,12 +52,6 @@ int main(int argc, char** argv)
 				log_level = strdup(optarg);
 				break;
 			case 'd':
-				directory = strdup(optarg);
-				break;
-			case 'P':
-				pattern = strdup(optarg);
-				break;
-			case 'D':
 				destroy_db = 1;
 				break;
 			case 'H':

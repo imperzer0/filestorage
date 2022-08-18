@@ -12,10 +12,8 @@
 #include "resources.hpp"
 
 
-const char* address = "http://0.0.0.0:80";
+const char* address = DEFAULT_SERVER_ADDRESS;
 const char* log_level = "2";
-const char* directory = ".";
-const char* pattern = "#.html";
 int hexdump = 0;
 
 // Handle interrupts, like Ctrl-C
@@ -60,6 +58,67 @@ const char* path_dirname(const char* path);
 
 const char* path_basename(const char* path);
 
+char* getcwd();
+
+
+inline void http_redirect_to(struct mg_connection* connection, const char* url_fmt, ...)
+{
+	char mem[256], * buf = mem;
+	va_list ap;
+	size_t len;
+	va_start(ap, url_fmt);
+	len = mg_vasprintf(&buf, sizeof(mem), url_fmt, ap);
+	va_end(ap);
+	
+	mg_printf(connection, "HTTP/1.1 307 %s\r\nLocation: %s\r\nContent-Length: 0\r\n\r\n", mg_http_status_code_str(307), buf);
+	
+	if (buf != mem) free(buf);
+}
+
+
+inline char* http_get_ret_path(struct mg_http_message* msg)
+{
+	char* ret_path = new char[msg->query.len]{ };
+	mg_http_get_var(&msg->query, "return_to", ret_path, msg->query.len - 1);
+	
+	if (!*ret_path)
+	{
+		delete[] ret_path;
+		return new char[]{ "/explorer/" };
+	}
+	
+	int last = mg_url_decode(ret_path, msg->query.len - 1, ret_path, msg->query.len - 1, 1);
+	ret_path[last] = 0;
+	
+	return ret_path;
+}
+
+
+inline char* http_get_ret_path_raw(struct mg_http_message* msg)
+{
+	char* ret_path = new char[msg->query.len]{ };
+	mg_http_get_var(&msg->query, "return_to", ret_path, msg->query.len - 1);
+	
+	if (!*ret_path)
+	{
+		delete[] ret_path;
+		return new char[]{ "?return_to=%2fexplorer%2f" };
+	}
+	
+	size_t ret_path_len = strlen(ret_path);
+	char* ret_path_url = new char[ret_path_len * 3]{ };
+	mg_url_encode(ret_path, ret_path_len, ret_path_url, ret_path_len * 3 - 1);
+	
+	char* ret_path_raw = new char[msg->query.len + ret_path_len * 2]{ };
+	sprintf(ret_path_raw, "?return_to=%s", ret_path_url);
+	
+	delete[] ret_path;
+	delete[] ret_path_url;
+	
+	return ret_path_raw;
+}
+
+
 void client_handler(struct mg_connection* connection, int ev, void* ev_data, void* fn_data)
 {
 	if (ev == MG_EV_HTTP_MSG)
@@ -67,25 +126,46 @@ void client_handler(struct mg_connection* connection, int ev, void* ev_data, voi
 		const char* database_user_password = *static_cast<const char**>(fn_data);
 		auto* msg = static_cast<mg_http_message*>(ev_data);
 		if (mg_http_match_uri(msg, "/") || mg_http_match_uri(msg, "/index.html") || mg_http_match_uri(msg, "/index"))
-			mg_http_reply(connection, 200, "Content-Type: text/html\r\n", login_page_html);
+		{
+			char* ret_path = http_get_ret_path_raw(msg);
+			
+			if (*ret_path)
+				mg_http_reply(connection, 200, "Content-Type: text/html\r\n", login_page_html, ret_path, ret_path);
+			else
+				mg_http_reply(connection, 200, "Content-Type: text/html\r\n", login_page_html, "", "");
+			
+			delete[] ret_path;
+		}
 		else if (mg_http_match_uri(msg, "/login"))
 		{
 			char login[MAX_LOGIN]{ }, password[MAX_PASSWORD]{ };
 			mg_http_get_var(&msg->body, "login", login, MAX_LOGIN);
 			mg_http_get_var(&msg->body, "password", password, MAX_PASSWORD);
 			
+			
 			auto conn = mariadb_connect_to_db(database_user_password);
 			auto db_password = mariadb_user_get_password(conn.get(), login);
 			if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
-				mg_http_reply(connection, 308, "Location: /explorer/\r\n", "");
+			{
+				char* ret_path = http_get_ret_path(msg);
+				
+				http_redirect_to(connection, ret_path);
+				
+				delete[] ret_path;
+			}
 			else
+			{
+				char* ret_path = http_get_ret_path_raw(msg);
+				
 				mg_http_reply(
 						connection, 200, "Content-Type: text/html\r\n",
 						invalid_credentials_page_html,
 						"Invalid credentials.<br/>Please register or contact support to recover your account.",
-						login, password, login, password
+						ret_path, login, password, ret_path, login, password
 				);
-			
+				
+				delete[] ret_path;
+			}
 		}
 		else if (mg_http_match_uri(msg, "/register"))
 		{
@@ -95,14 +175,26 @@ void client_handler(struct mg_connection* connection, int ev, void* ev_data, voi
 			
 			auto conn = mariadb_connect_to_db(database_user_password);
 			if (!mariadb_user_insert(conn.get(), login, password))
+			{
+				char* ret_path = http_get_ret_path_raw(msg);
+				
 				mg_http_reply(
 						connection, 200, "Content-Type: text/html\r\n",
-						invalid_credentials_page_html, "User already exists.", "", "", login, password
+						invalid_credentials_page_html,
+						"User already exists.<br/>Try out another username.",
+						ret_path, "", "", ret_path, login, password
 				);
+				
+				delete[] ret_path;
+			}
 			else
 			{
+				char* ret_path = http_get_ret_path(msg);
+				
 				system((std::string("mkdir -p './") + login + "/'").c_str());
-				mg_http_reply(connection, 308, "Location: /explorer/\r\n", login_page_html);
+				http_redirect_to(connection, ret_path);
+				
+				delete[] ret_path;
 			}
 		}
 		else if (starts_with(msg->uri.ptr, "/explorer/"))
@@ -157,7 +249,15 @@ void client_handler(struct mg_connection* connection, int ev, void* ev_data, voi
 				delete[] dir_rel;
 				delete[] dir;
 			}
-			else mg_http_reply(connection, 308, "Location: /\r\n", login_page_html);
+			else
+			{
+				char* curr_url = new char[msg->uri.len * 3]{ };
+				mg_url_encode(msg->uri.ptr, msg->uri.len, curr_url, msg->uri.len * 3 - 1);
+				
+				http_redirect_to(connection, "/?return_to=%s", curr_url);
+				
+				delete[] curr_url;
+			}
 		}
 		else mg_http_reply(connection, 404, "Content-Type: text/html\r\n", error_404_html);
 		
@@ -192,7 +292,7 @@ void server_run(const char* database_user_password)
 	
 	MG_INFO(("Mongoose v" MG_VERSION));
 	MG_INFO(("Server listening on : [%s]", address));
-	MG_INFO(("Web root directory  : [%s]", directory));
+	MG_INFO(("Web root directory  : [file://%s/]", getcwd()));
 	
 	while (s_signo == 0) mg_mgr_poll(&manager, 1000);
 	
@@ -493,4 +593,12 @@ const char* path_basename(const char* path)
 	
 	if (!slash) return "";
 	return slash + 1;
+}
+
+char* getcwd()
+{
+	char* cwd = new char[PATH_MAX];
+	getcwd(cwd, PATH_MAX);
+	cwd[PATH_MAX - 1] = 0;
+	return cwd;
 }

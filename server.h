@@ -13,8 +13,6 @@
 
 extern const char* address;
 extern const char* log_level;
-extern const char* directory;
-extern const char* pattern;
 extern int hexdump;
 
 extern void server_initialize(const char* database_user_password);
