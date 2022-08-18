@@ -49,12 +49,12 @@ typedef const char* (* prepare_function)(const char* dir);
 
 statistics directory_count(const char* dir);
 
-const char* directory_list_html(const char* dir, const char* dir_abs, const char* login, const char* password);
+std::string directory_list_html(const char* dir, const char* dir_abs, const char* login, const char* password);
 
 
 int starts_with(const char* str, const char* prefix);
 
-const char* path_dirname(const char* path);
+char* path_dirname(const char* path);
 
 const char* path_basename(const char* path);
 
@@ -226,6 +226,9 @@ void client_handler(struct mg_connection* connection, int ev, void* ev_data, voi
 				if (::stat(path.c_str(), &st) < 0)
 				{
 					mg_http_reply(connection, 404, "Content-Type: text/html\r\n", error_404_html);
+					
+					delete[] dir;
+					delete[] dir_rel;
 					return;
 				}
 				
@@ -233,6 +236,9 @@ void client_handler(struct mg_connection* connection, int ev, void* ev_data, voi
 				{
 					struct mg_http_serve_opts opts{ };
 					mg_http_serve_file(connection, msg, path.c_str(), &opts);
+					
+					delete[] dir;
+					delete[] dir_rel;
 					return;
 				}
 				
@@ -243,9 +249,10 @@ void client_handler(struct mg_connection* connection, int ev, void* ev_data, voi
 						dir_rel_dirname, dir_rel_dirname, login, password,
 						dir_rel_dirname, dir_rel_dirname, path_basename(dir_rel),
 						dir_rel, dir_rel, login, password, dir_rel,
-						directory_list_html(dir_rel, dir, login, password)
+						directory_list_html(dir_rel, dir, login, password).c_str()
 				);
 				
+				delete[] dir_rel_dirname;
 				delete[] dir_rel;
 				delete[] dir;
 			}
@@ -290,9 +297,13 @@ void server_run(const char* database_user_password)
 	
 	if (hexdump) connection->is_hexdumping = 1;
 	
+	auto cwd = getcwd();
+	
 	MG_INFO(("Mongoose v" MG_VERSION));
 	MG_INFO(("Server listening on : [%s]", address));
-	MG_INFO(("Web root directory  : [file://%s/]", getcwd()));
+	MG_INFO(("Web root directory  : [file://%s/]", cwd));
+	
+	delete[] cwd;
 	
 	while (s_signo == 0) mg_mgr_poll(&manager, 1000);
 	
@@ -453,7 +464,7 @@ const char* mariadb_user_get_password(sql::Connection* conn, const char* login)
 		
 		stmnt->setString(1, login);
 		
-		auto res = stmnt->executeQuery();
+		auto res = std::unique_ptr<sql::ResultSet>(stmnt->executeQuery());
 		if (res->next()) return res->getString("password").c_str();
 	}
 	catch (sql::SQLException& e) { MG_ERROR(("Failed to get user password: %s.", e.what())); }
@@ -505,7 +516,7 @@ const char* get_filename_ext(const char* filename)
 	return dot + 1;
 }
 
-const char* file_prepare_html(char* file, const char* file_abs, const char* login, const char* password)
+char* file_prepare_html(char* file, const char* file_abs, const char* login, const char* password)
 {
 	struct stat st{ };
 	stat((std::string("./") + file_abs).c_str(), &st);
@@ -515,7 +526,7 @@ const char* file_prepare_html(char* file, const char* file_abs, const char* logi
 	return html;
 }
 
-const char* directory_list_html(const char* dir, const char* dir_abs, const char* login, const char* password)
+std::string directory_list_html(const char* dir, const char* dir_abs, const char* login, const char* password)
 {
 	if (directory_count(dir_abs).total <= 0)
 		return explorer_dir_empty_html;
@@ -540,7 +551,12 @@ const char* directory_list_html(const char* dir, const char* dir_abs, const char
 			char* fullpath_abs = new char[strlen(dir_abs) + 1 + strlen(entry->d_name)]{ };
 			sprintf(fullpath_abs, "%s/%s", dir_abs, entry->d_name);
 			
-			result += directory_prepare_html(fullpath, fullpath_abs, login, password);
+			auto html = directory_prepare_html(fullpath, fullpath_abs, login, password);
+			result += html;
+			
+			delete[] html;
+			delete[] fullpath;
+			delete[] fullpath_abs;
 		}
 		if (entry->d_type == DT_REG)
 		{
@@ -550,16 +566,21 @@ const char* directory_list_html(const char* dir, const char* dir_abs, const char
 			char* fullpath_abs = new char[strlen(dir_abs) + 1 + strlen(entry->d_name)]{ };
 			sprintf(fullpath_abs, "%s/%s", dir_abs, entry->d_name);
 			
-			result += file_prepare_html(fullpath, fullpath_abs, login, password);
+			auto html = file_prepare_html(fullpath, fullpath_abs, login, password);
+			result += html;
+			
+			delete[] html;
+			delete[] fullpath;
+			delete[] fullpath_abs;
 		}
 	}
 	closedir(dirp);
 	
-	char* html = new char[result.size() + static_strlen(explorer_dir_content_html)]{ };
+	std::string html(result.size() + static_strlen(explorer_dir_content_html), 0);
 	
-	sprintf(html, explorer_dir_content_html, result.c_str());
+	sprintf(html.data(), explorer_dir_content_html, result.c_str());
 	
-	return html;
+	return html.c_str();
 }
 
 
@@ -571,15 +592,15 @@ int starts_with(const char* str, const char* prefix)
 	return true;
 }
 
-const char* path_dirname(const char* path)
+char* path_dirname(const char* path)
 {
 	char* accesible_path = ::strdup(path);
 	char* slash = nullptr;
-	for (char* dot_tmp = accesible_path; *dot_tmp; ++dot_tmp)
-		if (*dot_tmp == '/')
-			slash = dot_tmp;
+	for (char* tmp = accesible_path; *tmp; ++tmp)
+		if (*tmp == '/')
+			slash = tmp;
 	
-	if (!slash) return "";
+	if (!slash) return new char[1]{ };
 	*slash = 0;
 	return accesible_path;
 }
@@ -587,9 +608,9 @@ const char* path_dirname(const char* path)
 const char* path_basename(const char* path)
 {
 	const char* slash = nullptr;
-	for (const char* dot_tmp = path; *dot_tmp; ++dot_tmp)
-		if (*dot_tmp == '/')
-			slash = dot_tmp;
+	for (const char* tmp = path; *tmp; ++tmp)
+		if (*tmp == '/')
+			slash = tmp;
 	
 	if (!slash) return "";
 	return slash + 1;
