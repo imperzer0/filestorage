@@ -6,7 +6,7 @@
 #define FILESTORAGE_RESOURCES_HPP
 
 
-static constexpr const char* error_404_html = R"(
+static constexpr const char* error_404_html = R"===!(
 <!doctype html>
 <html lang="en">
 <head>
@@ -215,9 +215,9 @@ static constexpr const char* error_404_html = R"(
 </div>
 </body>
 </html>
-)";
+)===!";
 
-static constexpr const char* login_page_html = R"(
+static constexpr const char* login_page_html = R"===!(
 <!doctype html>
 <html lang="en">
 <head>
@@ -377,9 +377,9 @@ static constexpr const char* login_page_html = R"(
     });
 </script>
 </html>
-)";
+)===!";
 
-static constexpr const char* invalid_credentials_page_html = R"(
+static constexpr const char* invalid_credentials_page_html = R"===!(
 <!doctype html>
 <html lang="en">
 <head>
@@ -546,9 +546,9 @@ static constexpr const char* invalid_credentials_page_html = R"(
     });
 </script>
 </html>
-)";
+)===!";
 
-static constexpr const char* explorer_page_html = R"(
+static constexpr const char* explorer_page_html = R"===!(
 <!doctype html>
 <html lang="en">
 <head>
@@ -1132,7 +1132,7 @@ static constexpr const char* explorer_page_html = R"(
     </div>
 
 
-    <form method="POST" action="/upload/%s" style="display: none;" id="forwardform-upload%s">
+    <form method="POST" action="/uploader/%s" style="display: none;" id="forwardform-upload%s">
         <input type="text" name="login" value="%s"/>
         <input type="password" name="password" value="%s"/>
     </form>
@@ -1152,7 +1152,7 @@ static constexpr const char* explorer_page_html = R"(
 </div>
 </body>
 </html>
-)";
+)===!";
 
 static constexpr const char* explorer_dir_html = R"(
         <form method="POST" action="/explorer/%s"  style="display: none;" id="forwardform%s">
@@ -4417,6 +4417,322 @@ static constexpr const char* deleter_file_html = R"(
             </a>
         </li>
 )";
+
+
+static constexpr const char* uploader_page_html = R"===!(
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Upload Files</title>
+
+    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+    <style type="text/css">
+        * {
+            box-sizing: border-box;
+            font-family: Roboto, monospace;
+        }
+
+        .container * {
+            color: #eee;
+        }
+
+        body {
+            background-color: #222;
+        }
+
+        input[type=file] {
+            position: absolute;
+            right: -9999px;
+            visibility: hidden;
+            opacity: 0;
+        }
+
+        input[type=submit] {
+            position: relative;
+            padding: 1rem 3rem;
+            background: #0caffa;
+            display: inline-block;
+            text-align: center;
+            overflow: hidden;
+            border-radius: 10px;
+            border: 0;
+            color: #333;
+            font-size: 20px;
+        }
+
+        input[type=submit]:hover {
+            background: #0b7fc2;
+            color: #333;
+            cursor: pointer;
+            transition: 0.2s all;
+        }
+
+        label {
+            position: relative;
+            padding: 1rem 3rem;
+            background: #333;
+            display: inline-block;
+            text-align: center;
+            overflow: hidden;
+            border-radius: 10px;
+        }
+
+        label:hover {
+            background: #0c8fda;
+            color: #333;
+            cursor: pointer;
+            transition: 0.2s all;
+        }
+
+        div.files {
+            background: #333;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 10px;
+        }
+
+        div.files ul {
+            list-style: none;
+            padding: 0;
+            max-height: 150px;
+            overflow: auto;
+        }
+
+        div.files ul li {
+            padding: 0.5rem 0;
+            padding-right: 2rem;
+            position: relative;
+        }
+
+        div.files ul li i {
+            cursor: pointer;
+            position: absolute;
+            top: 50%;
+            right: 0;
+            transform: translatey(-50%);
+        }
+
+        div.files h2 {
+            margin: 0 0 10px 0;
+        }
+
+        div.container {
+            width: 100%;
+            padding: 0 30%;
+        }
+
+        span.file-size {
+            color: #999;
+            padding-left: 0.5rem;
+        }
+    </style>
+    <style type="text/css">
+        .progress {
+            width: 100%;
+            height: 15px;
+        }
+
+        .progress-wrap {
+            background: #58ffa8;
+            margin: 20px 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-wrap .progress-bar {
+            background: #999;
+            left: 0;
+            position: absolute;
+            top: 0;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Upload Files to EXPLORER/%s</h1>
+    <div>
+        <label for="upload">
+            <input type="file" id="upload" multiple>
+            Upload Files
+        </label>
+    </div>
+    <div class="files">
+        <h2>Files Selected</h2>
+        <ul></ul>
+    </div>
+    <div class="progress-wrap progress" data-progress-percent="0" onchange="moveProgressBar()">
+        <div class="progress-bar progress"></div>
+    </div>
+    <input id="upload_button" type="submit" value="Send" onclick="
+        console.log('uploading...');
+        renderFileList();
+        upload_all_files();">
+</div>
+</body>
+<script type="text/javascript">
+    // no react or anything
+    let state = {};
+
+    // state management
+    function updateState(newState) {
+        state = {...state, ...newState};
+    }
+
+    // event handlers
+    $("input").change(function (e) {
+        let files = document.getElementsByTagName("input")[0].files;
+        let filesArr = Array.from(files);
+        updateState({files: files, filesArr: filesArr});
+
+        renderFileList();
+    });
+
+    $(".files").on("click", "li > i", function (e) {
+        let key = $(this).parent().attr("key");
+        let curArr = state.filesArr;
+        curArr.splice(key, 1);
+        updateState({filesArr: curArr});
+        renderFileList();
+    });
+
+    // render functions
+    function renderFileList() {
+        let fileMap = state.filesArr.map((file, index) => {
+            let suffix = "bytes";
+            let size = file.size;
+            if (size >= 1024 && size < 1024000) {
+                suffix = "KB";
+                size = Math.round(size / 1024 * 100) / 100;
+            } else if (size >= 1024000) {
+                suffix = "MB";
+                size = Math.round(size / 1024000 * 100) / 100;
+            }
+
+            return `<li key="${index}">${
+                file.name
+            } <span class="file-size">${size} ${suffix}</span><i class="material-icons md-48">delete</i></li>`;
+        });
+        $("ul").html(fileMap);
+    }
+
+    function upload_all_files() {
+        if (state.filesArr == null)
+            return;
+
+        for (let i = 0; i < state.filesArr.length; i++) {
+            let file = state.filesArr[i];
+
+            processFile();
+
+            function processFile() {
+                let size = file.size;
+                const sliceSize = 1048576;
+                let start = 0;
+
+                setTimeout(loop, 1);
+
+                function loop() {
+                    let end = start + sliceSize;
+
+                    if (size - end < 0) {
+                        end = size;
+                    }
+
+                    let s = slice(file, start, end);
+
+                    send(s, start, end);
+
+                    console.log("start = " + start + " end = " + end);
+                    console.log("wrapper = " + $(".progress-wrap"));
+                    console.log("attribute = " + $(".progress-wrap").attr("data-progress-percent"));
+                    let progress = end / size * 100;
+                    console.log("progress = " + progress);
+                    $(".progress-wrap").attr("data-progress-percent", progress + "");
+                    console.log("attribute = " + $(".progress-wrap").attr("data-progress-percent"));
+
+                    moveProgressBar();
+
+                    if (end < size) {
+                        start += sliceSize;
+                        setTimeout(loop, 1);
+                    } else {
+                        setTimeout(finalize, 500);
+                    }
+                }
+            }
+
+            function send(piece, start, end) {
+                let formdata = new FormData();
+                let xhr = new XMLHttpRequest();
+
+                xhr.open('POST', '/upload/%s', false);
+
+                formdata.append('login', '%s');
+                formdata.append('password', '%s');
+                formdata.append('name', file.name);
+                formdata.append('start', start);
+                formdata.append('file', piece);
+
+                console.log("uploading [" + start + "]");
+
+                xhr.send(formdata);
+
+                console.log(xhr.status + " " + xhr.responseText);
+            }
+
+            function slice(file, start, end) {
+                let slice = file.mozSlice ? file.mozSlice :
+                    file.webkitSlice ? file.webkitSlice :
+                        file.slice ? file.slice : noop;
+
+                return slice.bind(file)(start, end);
+            }
+
+            function noop() {
+            }
+        }
+
+        function finalize() {
+            let xhr = new XMLHttpRequest();
+            xhr.open('POST', '/explorer/%s', false);
+            xhr.send('login=%s&password=%s');
+            document.open();
+            document.write(xhr.responseText);
+            document.close();
+        }
+    }
+</script>
+<script type="text/javascript">
+    // on page load...
+    moveProgressBar();
+    // on browser resize...
+    $(window).resize(function () {
+        moveProgressBar();
+    });
+
+    // SIGNATURE PROGRESS
+    function moveProgressBar() {
+        let getPercent = (parseFloat($(".progress-wrap").attr("data-progress-percent")) / 100);
+        let getProgressWrapWidth = $('.progress-wrap').width();
+        let progressTotal = getPercent * getProgressWrapWidth;
+        // let animationLength = 200;
+
+        // on page load, animate percentage bar to data percentage length
+        // .stop() used to prevent animation queueing
+        $('.progress-bar').stop().animate({
+            left: progressTotal
+        }, 0);
+    }
+</script>
+</html>
+)===!";
 
 
 #endif //FILESTORAGE_RESOURCES_HPP
