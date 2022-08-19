@@ -544,69 +544,6 @@ void client_handler(struct mg_connection* connection, int ev, void* ev_data, voi
 		auto* msg = static_cast<mg_http_message*>(ev_data);
 		handle_http_message(connection, msg, database_user_password);
 	}
-	/*else if (ev == MG_EV_HTTP_CHUNK)
-	{
-		const char* database_user_password = *static_cast<const char**>(fn_data);
-		auto* msg = static_cast<mg_http_message*>(ev_data);
-		
-		if (starts_with(msg->uri.ptr, "/upload/"))
-		{
-			char* login = new char[MAX_LOGIN]{ }, * password = new char[MAX_PASSWORD]{ }, * filename = new char[255]{ };
-			mg_http_get_var(&msg->query, "login", login, MAX_LOGIN);
-			mg_http_get_var(&msg->query, "password", password, MAX_PASSWORD);
-			mg_http_get_var(&msg->query, "file", filename, 255);
-			
-			auto conn = mariadb_connect_to_db(database_user_password);
-			auto db_password = mariadb_user_get_password(conn.get(), login);
-			if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
-			{
-				char* dir_rel;
-				auto dir = new char[msg->uri.len + MAX_LOGIN]{ };
-				
-				char* uri = new char[msg->uri.len + 1];
-				strncpy(uri, msg->uri.ptr, msg->uri.len);
-				uri[msg->uri.len] = 0;
-				
-				strscanf(uri, "/upload/%s", &dir_rel);
-				sprintf(dir, "%s%s", login, dir_rel);
-				
-				delete[] uri;
-				
-				std::string path("./");
-				path += dir;
-				
-				struct stat st{ };
-				if (::stat(path.c_str(), &st) < 0)
-				{
-					delete[] dir;
-					delete[] dir_rel;
-					delete[] login;
-					delete[] password;
-					delete[] filename;
-					return;
-				}
-				
-				path += "/";
-				path += filename;
-				
-				MG_INFO(("Got chunk len %lu", msg->chunk.len));
-				MG_INFO(("Query string: [%.*s]", msg->query.len, msg->query.ptr));
-				
-				FILE* file = fopen(path.c_str(), "ab");
-				fwrite(msg->chunk.ptr, sizeof(char), msg->chunk.len, file);
-				fclose(file);
-				
-				mg_http_delete_chunk(connection, msg);
-				
-				delete[] dir;
-				delete[] dir_rel;
-			}
-			
-			delete[] login;
-			delete[] password;
-			delete[] filename;
-		}
-	}*/
 }
 
 static struct mg_mgr manager{ };
