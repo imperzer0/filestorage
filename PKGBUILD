@@ -2,15 +2,15 @@
 # Maintained by imper <imperator999mcpe@gmail.com>
 
 pkgname=filestorage
-pkgver=5.0
+pkgver=5.1
 pkgrel=1
 pkgdesc='File storage service server for linux'
 author="imperzer0"
 arch=('any')
 url=https://github.com/$author/$pkgname
 license=('GPL3')
-depends=('openssl')
-makedepends=('cmake' 'git')
+depends=('openssl' 'gcc' 'mariadb' 'mariadb-connector-cpp-git')
+makedepends=('cmake' 'git' 'gcc' 'make' 'mariadb-connector-cpp-git')
 
 _srcprefix="local:/"
 _libfiles=("CMakeLists.txt" "main.cpp" "server.cpp" "server.h" "constants.hpp" "resources.hpp")
