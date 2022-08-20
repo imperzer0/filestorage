@@ -8,22 +8,22 @@
 
 static constexpr const char* _404_html =
 		
-		#include "resources/404.html"
+		#include "404.html"
 
 
 static constexpr const char* index_page_html =
 		
-		#include "resources/index.html"
+		#include "index.html"
 
 
 static constexpr const char* invalid_credentials_page_html =
 		
-		#include "resources/invalid_credentials.html"
+		#include "invalid_credentials.html"
 
 
 static constexpr const char* explorer_page_html =
 		
-		#include "resources/explorer.html"
+		#include "explorer.html"
 
 
 static constexpr const char* explorer_dir_html = R"(
@@ -71,7 +71,7 @@ static constexpr const char* explorer_dir_empty_html = R"(
 
 static constexpr const char* deleter_page_html =
 		
-		#include "resources/deleter.html"
+		#include "deleter.html"
 
 
 static constexpr const char* deleter_dir_html = R"(
@@ -133,7 +133,7 @@ static constexpr const char* deleter_file_html = R"(
 
 static constexpr const char* uploader_page_html =
 		
-		#include "resources/uploader.html"
+		#include "uploader.html"
 
 
 #endif //FILESTORAGE_RESOURCES_HPP

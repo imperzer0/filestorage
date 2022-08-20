@@ -2,7 +2,7 @@
 # Maintained by imper <imperator999mcpe@gmail.com>
 
 pkgname=filestorage
-pkgver=6.1
+pkgver=6.2
 pkgrel=1
 pkgdesc='File storage service server for linux'
 author="imperzer0"
@@ -13,9 +13,12 @@ depends=('openssl' 'gcc' 'mariadb' 'mariadb-connector-cpp-git')
 makedepends=('cmake' 'git' 'gcc' 'make' 'mariadb-connector-cpp-git')
 
 _srcprefix="local:/"
-_libfiles=("CMakeLists.txt" "main.cpp" "server.cpp" "server.h" "constants.hpp" "resources.hpp")
+_libfiles=("CMakeLists.txt" "main.cpp"
+	"server.cpp" "server.h"
+	"database.cpp" "database.h"
+	"constants.hpp" "resources.hpp"
+)
 
-_rcdir="resources"
 _rcfiles=(
 	"resources/404.html"
 	"resources/deleter.html"
@@ -26,17 +29,14 @@ _rcfiles=(
 )
 
 # shellcheck disable=SC2068
-for _rcfile in ${_rcfiles[@]}; do
-	_libfiles=(${_libfiles[@]} "$_rcdir/$_rcfile")
-done
-
-# shellcheck disable=SC2068
 for _libfile in ${_libfiles[@]}; do
 	source=(${source[@]} "$_srcprefix/$_libfile")
+	sha256sums=(${sha256sums[@]} "SKIP")
 done
 
 # shellcheck disable=SC2068
-for _libfile in ${_libfiles[@]}; do
+for _rcfile in ${_rcfiles[@]}; do
+	source=(${source[@]} "$_srcprefix/$_rcfile")
 	sha256sums=(${sha256sums[@]} "SKIP")
 done
 
