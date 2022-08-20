@@ -141,9 +141,9 @@ inline void handle_http_message(struct mg_connection* connection, struct mg_http
 		char* ret_path = http_get_ret_path_raw(msg);
 		
 		if (*ret_path)
-			mg_http_reply(connection, 200, "Content-Type: text/html\r\n", login_page_html, ret_path, ret_path);
+			mg_http_reply(connection, 200, "Content-Type: text/html\r\n", index_page_html, ret_path, ret_path);
 		else
-			mg_http_reply(connection, 200, "Content-Type: text/html\r\n", login_page_html, "", "");
+			mg_http_reply(connection, 200, "Content-Type: text/html\r\n", index_page_html, "", "");
 		
 		delete[] ret_path;
 	}
@@ -236,7 +236,7 @@ inline void handle_http_message(struct mg_connection* connection, struct mg_http
 			struct stat st{ };
 			if (::stat(path.c_str(), &st) < 0)
 			{
-				mg_http_reply(connection, 404, "Content-Type: text/html\r\n", error_404_html);
+				mg_http_reply(connection, 404, "Content-Type: text/html\r\n", _404_html);
 				
 				delete[] dir;
 				delete[] dir_rel;
@@ -309,7 +309,7 @@ inline void handle_http_message(struct mg_connection* connection, struct mg_http
 			struct stat st{ };
 			if (::stat(path.c_str(), &st) < 0)
 			{
-				mg_http_reply(connection, 404, "Content-Type: text/html\r\n", error_404_html);
+				mg_http_reply(connection, 404, "Content-Type: text/html\r\n", _404_html);
 				
 				delete[] dir;
 				delete[] dir_rel;
@@ -418,7 +418,7 @@ inline void handle_http_message(struct mg_connection* connection, struct mg_http
 			struct stat st{ };
 			if (::stat(path.c_str(), &st) < 0 && S_ISDIR(st.st_mode))
 			{
-				mg_http_reply(connection, 404, "Content-Type: text/html\r\n", error_404_html);
+				mg_http_reply(connection, 404, "Content-Type: text/html\r\n", _404_html);
 				
 				delete[] dir;
 				delete[] dir_rel;
@@ -427,7 +427,8 @@ inline void handle_http_message(struct mg_connection* connection, struct mg_http
 			
 			mg_http_reply(
 					connection, 200, "Content-Type: text/html\r\n", uploader_page_html,
-					dir_rel, dir_rel, login, password, dir_rel, login, password
+					dir_rel, dir_rel, login, password, dir_rel, dir_rel, dir_rel, dir_rel,
+					dir_rel, login, password, dir_rel, login, password, dir_rel, login, password, dir_rel, login, password
 			);
 			
 			delete[] dir_rel;
@@ -532,7 +533,78 @@ inline void handle_http_message(struct mg_connection* connection, struct mg_http
 		delete[] password;
 		delete[] filename;
 	}
-	else mg_http_reply(connection, 404, "Content-Type: text/html\r\n", error_404_html);
+	else if (starts_with(msg->uri.ptr, "/mkdir/"))
+	{
+		char* login = new char[1]{ }, * password = new char[1]{ };
+		
+		struct mg_http_part filepart{ };
+		size_t ofs = 0;
+		while ((ofs = mg_http_next_multipart(msg->body, ofs, &filepart)) > 0)
+		{
+			MG_INFO((
+					        "Chunk name: [%.*s] filename: [%.*s] length: %lu bytes",
+							        filepart.name.len, filepart.name.ptr, filepart.filename.len,
+							        filepart.filename.ptr, filepart.body.len
+			        ));
+			if (!strncmp(filepart.name.ptr, "login", filepart.name.len))
+			{
+				delete[] login;
+				login = strndup(filepart.body.ptr, filepart.body.len);
+			}
+			else if (!strncmp(filepart.name.ptr, "password", filepart.name.len))
+			{
+				delete[] password;
+				password = strndup(filepart.body.ptr, filepart.body.len);
+			}
+			else if (!strncmp(filepart.name.ptr, "folder", filepart.name.len))
+			{
+				auto conn = mariadb_connect_to_db(database_user_password);
+				auto db_password = mariadb_user_get_password(conn.get(), login);
+				if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
+				{
+					char* dir_rel;
+					auto dir = new char[msg->uri.len + MAX_LOGIN]{ };
+					
+					char* uri = new char[msg->uri.len + 1];
+					strncpy(uri, msg->uri.ptr, msg->uri.len);
+					uri[msg->uri.len] = 0;
+					
+					strscanf(uri, "/mkdir/%s", &dir_rel);
+					sprintf(dir, "%s%s", login, dir_rel);
+					
+					delete[] uri;
+					
+					std::string path("./");
+					path += dir;
+					
+					struct stat st{ };
+					if (::stat(path.c_str(), &st) < 0)
+					{
+						delete[] dir;
+						delete[] dir_rel;
+						delete[] login;
+						delete[] password;
+						return;
+					}
+					
+					path += "/";
+					path.append(filepart.body.ptr, filepart.body.len);
+					
+					system(("mkdir -p '" + path + "'").c_str());
+					
+					mg_http_reply(connection, 200, "Content-Type: text/plain\r\n", "Ok");
+					
+					delete[] dir;
+					delete[] dir_rel;
+				}
+				else mg_http_reply(connection, 404, "Content-Type: text/plain\r\n", "Invalid");
+			}
+			else mg_http_reply(connection, 404, "Content-Type: text/plain\r\n", "Invalid");
+		}
+		delete[] login;
+		delete[] password;
+	}
+	else mg_http_reply(connection, 404, "Content-Type: text/html\r\n", _404_html);
 }
 
 

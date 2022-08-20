@@ -2,7 +2,7 @@
 # Maintained by imper <imperator999mcpe@gmail.com>
 
 pkgname=filestorage
-pkgver=5.1
+pkgver=6.0
 pkgrel=1
 pkgdesc='File storage service server for linux'
 author="imperzer0"
@@ -14,6 +14,21 @@ makedepends=('cmake' 'git' 'gcc' 'make' 'mariadb-connector-cpp-git')
 
 _srcprefix="local:/"
 _libfiles=("CMakeLists.txt" "main.cpp" "server.cpp" "server.h" "constants.hpp" "resources.hpp")
+
+_rcdir="resources"
+_rcfiles=(
+	"resources/404.html"
+	"resources/deleter.html"
+	"resources/explorer.html"
+	"resources/index.html"
+	"resources/invalid_credentials.html"
+	"resources/uploader.html"
+)
+
+# shellcheck disable=SC2068
+for _rcfile in ${_rcfiles[@]}; do
+	_libfiles=(${_libfiles[@]} "$_rcdir/$_rcfile")
+done
 
 # shellcheck disable=SC2068
 for _libfile in ${_libfiles[@]}; do
