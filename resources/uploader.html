@@ -366,7 +366,7 @@ R"===!(
         {
             let formdata = new FormData();
             let xhr = new XMLHttpRequest();
-            xhr.open('POST', '/mkdir/%s', true);
+            xhr.open('POST', '/mkdir/%s', false);
 
             formdata.append('login', '%s');
             formdata.append('password', '%s');

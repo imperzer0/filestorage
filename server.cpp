@@ -86,6 +86,8 @@ inline void handle_upload_html(struct mg_connection* connection, struct mg_http_
 
 inline void handle_mkdir_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password);
 
+inline void handle_move_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password);
+
 
 inline void handle_http_message(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
 {
@@ -107,6 +109,8 @@ inline void handle_http_message(struct mg_connection* connection, struct mg_http
 		handle_upload_html(connection, msg, database_user_password);
 	else if (starts_with(msg->uri.ptr, "/mkdir/"))
 		handle_mkdir_html(connection, msg, database_user_password);
+	else if (starts_with(msg->uri.ptr, "/move/"))
+		handle_move_html(connection, msg, database_user_password);
 	else mg_http_reply(connection, 404, "Content-Type: text/html\r\n", _404_html);
 }
 
@@ -291,10 +295,12 @@ inline void handle_explorer_html(struct mg_connection* connection, struct mg_htt
 				dir_rel_dirname, dir_rel_dirname, path_basename(dir_rel),
 				dir_rel, dir_rel, login, password, dir_rel,
 				dir_rel, dir_rel, login, password, dir_rel,
+				dir_rel, login, password, dir_rel,
 				directory_list_html(
 						dir_rel, dir, login, password,
 						explorer_directory_prepare_html, explorer_file_prepare_html
-				).c_str()
+				).c_str(),
+				login, password
 		);
 		
 		delete[] dir_rel_dirname;
@@ -642,6 +648,82 @@ inline void handle_mkdir_html(struct mg_connection* connection, struct mg_http_m
 	delete[] password;
 }
 
+inline void handle_move_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
+{
+	char* login = new char[1]{ }, * password = new char[1]{ };
+	
+	struct mg_http_part form_part{ };
+	size_t ofs = 0;
+	while ((ofs = mg_http_next_multipart(msg->body, ofs, &form_part)) > 0)
+	{
+		MG_INFO((
+				        "Chunk name: [%.*s] filename: [%.*s] length: %lu bytes",
+						        form_part.name.len, form_part.name.ptr, form_part.filename.len,
+						        form_part.filename.ptr, form_part.body.len
+		        ));
+		if (!strncmp(form_part.name.ptr, "login", form_part.name.len))
+		{
+			delete[] login;
+			login = strndup(form_part.body.ptr, form_part.body.len);
+		}
+		else if (!strncmp(form_part.name.ptr, "password", form_part.name.len))
+		{
+			delete[] password;
+			password = strndup(form_part.body.ptr, form_part.body.len);
+		}
+		else if (!strncmp(form_part.name.ptr, "to", form_part.name.len) && *form_part.body.ptr == '/')
+		{
+			auto conn = mariadb_connect_to_db(database_user_password);
+			auto db_password = mariadb_user_get_password(conn.get(), login);
+			if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
+			{
+				char* file_rel;
+				auto file = new char[msg->uri.len + MAX_LOGIN]{ };
+				
+				char* uri = new char[msg->uri.len + 1];
+				strncpy(uri, msg->uri.ptr, msg->uri.len);
+				uri[msg->uri.len] = 0;
+				
+				strscanf(uri, "/move/%s", &file_rel);
+				sprintf(file, "%s%s", login, file_rel);
+				
+				delete[] uri;
+				
+				std::string path_from("./");
+				path_from += file;
+				
+				struct stat st{ };
+				if (::stat(path_from.c_str(), &st) < 0)
+				{
+					delete[] file;
+					delete[] file_rel;
+					delete[] login;
+					delete[] password;
+					mg_http_reply(connection, 404, "Content-Type: text/plain\r\n", "Fail");
+					return;
+				}
+				
+				std::string path_to("./");
+				path_to += login;
+				path_to.append(form_part.body.ptr, form_part.body.len);
+				
+				system(("mkdir -p '" + path_to + "'").c_str());
+				
+				system(("mv -f '" + path_from + "' '" + path_to + "/'").c_str());
+				
+				mg_http_reply(connection, 200, "Content-Type: text/plain\r\n", "Ok");
+				
+				delete[] file;
+				delete[] file_rel;
+			}
+			else mg_http_reply(connection, 404, "Content-Type: text/plain\r\n", "Invalid");
+		}
+		else mg_http_reply(connection, 404, "Content-Type: text/plain\r\n", "Invalid");
+	}
+	delete[] login;
+	delete[] password;
+}
+
 
 #include "database.cpp"
 
@@ -686,7 +768,11 @@ inline char* explorer_directory_prepare_html(const char* dir, const char* dir_ab
 {
 	statistics st = directory_count(dir_abs);
 	char* html = new char[static_strlen(explorer_dir_html) + 2088];
-	sprintf(html, explorer_dir_html, dir, dir, login, password, dir, dir, path_basename(dir), st.files, st.folders);
+	sprintf(
+			html, explorer_dir_html,
+			dir, dir, login, password,
+			dir, dir, dir, login, password, path_basename(dir), st.files, st.folders
+	);
 	return html;
 }
 
@@ -696,7 +782,11 @@ inline char* explorer_file_prepare_html(const char* file, const char* file_abs, 
 	stat((std::string("./") + file_abs).c_str(), &st);
 	char* html = new char[static_strlen(explorer_file_html) + 2088];
 	auto ext = get_filename_ext(file);
-	sprintf(html, explorer_file_html, file, file, login, password, file, file, ext, ext, path_basename(file), st.st_size);
+	sprintf(
+			html, explorer_file_html,
+			file, file, login, password,
+			file, file, file, login, password, ext, ext, path_basename(file), st.st_size
+	);
 	return html;
 }
 

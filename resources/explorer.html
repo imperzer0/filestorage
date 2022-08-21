@@ -7,9 +7,11 @@ R"===!(
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Storage Explorer</title>
-    <style type="text/css">
-        @charset "utf-8";
 
+    <link href="https://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet">
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+    <style type="text/css">
 
         /*-------------------------
             Simple reset
@@ -18,6 +20,12 @@ R"===!(
         * {
             margin: 0;
             padding: 0;
+            font-family: monospace;
+        }
+
+        html {
+            height: 100%;
+            width: 100%;
         }
 
 
@@ -26,8 +34,7 @@ R"===!(
         -------------------------*/
 
         body {
-            background-color: #0e3858;
-            font: 14px normal Arial, Helvetica, sans-serif;
+            background-color: #2c482e;
             z-index: -4;
         }
 
@@ -60,7 +67,7 @@ R"===!(
         .filemanager .breadcrumbs {
             color: #ffffff;
             margin-left: 20px;
-            font-family: Inconsolata, monospace;
+            font-family: monospace;
             font-size: 24px;
             font-weight: 700;
             line-height: 35px;
@@ -402,19 +409,23 @@ R"===!(
         }
 
         .icon.file.f-deb,
+        .icon.file.f-rpm,
         .icon.file.f-dmg,
         .icon.file.f-gz,
         .icon.file.f-rar,
         .icon.file.f-zip,
+        .icon.file.f-zst,
         .icon.file.f-7z {
             box-shadow: 1.74em -2.1em 0 0 #867c75 inset;
         }
 
         .icon.file.f-deb:after,
+        .icon.file.f-rpm:after,
         .icon.file.f-dmg:after,
         .icon.file.f-gz:after,
         .icon.file.f-rar:after,
         .icon.file.f-zip:after,
+        .icon.file.f-zst:after,
         .icon.file.f-7z:after {
             border-bottom-color: #685f58;
         }
@@ -451,6 +462,44 @@ R"===!(
         .icon.file.f-saas:after,
         .icon.file.f-scss:after {
             border-bottom-color: #30837c;
+        }
+
+        .icon.file.f-bin,
+        .icon.file.f-o {
+            box-shadow: 1.74em -2.1em 0 0 #0f1f36 inset;
+        }
+
+        .icon.file.f-bin:after,
+        .icon.file.f-o:after {
+            border-bottom-color: #000000;
+        }
+
+        .icon.file.f-c,
+        .icon.file.f-cpp {
+            box-shadow: 1.74em -2.1em 0 0 #8b77ba inset;
+        }
+
+        .icon.file.f-c:after,
+        .icon.file.f-cpp:after {
+            border-bottom-color: #67588a;
+        }
+
+        .icon.file.f-h,
+        .icon.file.f-hpp {
+            box-shadow: 1.74em -2.1em 0 0 #b48538 inset;
+        }
+
+        .icon.file.f-h:after,
+        .icon.file.f-hpp:after {
+            border-bottom-color: #8a662b;
+        }
+
+        .icon.file.f-gitignore {
+            box-shadow: 1.74em -2.1em 0 0 #818c95 inset;
+        }
+
+        .icon.file.f-gitignore:after {
+            border-bottom-color: #646c73;
         }
 
 
@@ -535,22 +584,6 @@ R"===!(
             }
         }
 
-        .filemanager .upload {
-            position: absolute;
-            margin-right: 100px;
-            padding: 9px 12px 0 12px;
-            border-radius: 7px;
-            background-color: rgba(255, 255, 255, 0.5);
-            cursor: pointer;
-            right: 0;
-            font-family: Inconsolata, monospace;
-            font-size: 30px;
-            font-weight: bold;
-            color: #ffffff;
-            display: block;
-            text-decoration: none;
-        }
-
         .filemanager .delete {
             position: absolute;
             margin-right: 30px;
@@ -559,7 +592,39 @@ R"===!(
             background-color: rgba(255, 0, 0, 0.4);
             cursor: pointer;
             right: 0;
-            font-family: Inconsolata, monospace;
+            font-family: monospace;
+            font-size: 30px;
+            font-weight: bold;
+            color: #ffffff;
+            display: block;
+            text-decoration: none;
+        }
+
+        .filemanager .upload {
+            position: absolute;
+            margin-right: 100px;
+            padding: 9px 12px 0 12px;
+            border-radius: 7px;
+            background-color: rgba(0, 255, 255, 0.5);
+            cursor: pointer;
+            right: 0;
+            font-family: monospace;
+            font-size: 30px;
+            font-weight: bold;
+            color: #ffffff;
+            display: block;
+            text-decoration: none;
+        }
+
+        .filemanager .toroot {
+            position: absolute;
+            margin-right: 170px;
+            padding: 9px 12px 0 12px;
+            border-radius: 7px;
+            background-color: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            right: 0;
+            font-family: monospace;
             font-size: 30px;
             font-weight: bold;
             color: #ffffff;
@@ -567,6 +632,82 @@ R"===!(
             text-decoration: none;
         }
     </style>
+    <style type="text/css">
+        .container * {
+            color: #eee;
+        }
+
+        input[type=submit] {
+            position: relative;
+            padding: 1rem 3rem;
+            background: #2ca609;
+            display: inline-block;
+            text-align: center;
+            overflow: hidden;
+            border-radius: 10px;
+            border: 0;
+            color: #113;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        input[type=submit]:hover {
+            background: #117306;
+            color: #333;
+            cursor: pointer;
+            transition: 0.2s all;
+        }
+
+        label {
+            position: relative;
+            padding: 1rem 3rem;
+            background: #000;
+            display: inline-block;
+            text-align: center;
+            overflow: hidden;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        label:hover {
+            background: #0c8fda;
+            color: #333;
+            cursor: pointer;
+            transition: 0.2s all;
+        }
+
+        #context-menu {
+            position: fixed;
+            width: 50%;
+            margin: 0;
+            padding: 5px;
+            background: #1f3500;
+            border-radius: 5px;
+            z-index: 10000;
+            transform: scale(0);
+            transform-origin: top left;
+        }
+
+        #context-menu.visible {
+            transform: scale(1);
+            transition: transform 100ms ease-in-out;
+        }
+
+        input {
+            font-family: "Inconsolata", monospace;
+            outline: 0;
+            background: #7c8364;
+            width: 100%;
+            border: 0;
+            margin: 0 0 15px;
+            padding: 1rem;
+            box-sizing: border-box;
+            font-size: 15px;
+        }
+    </style>
+    <script type="text/javascript">
+        let submit_move_item = null;
+    </script>
 </head>
 <body>
 <div class="filemanager">
@@ -597,9 +738,115 @@ R"===!(
 
     <a class="delete" onclick="document.getElementById('forwardform-delete%s').submit();">X</a>
 
+
+    <form method="POST" action="/explorer/" style="display: none;" id="forwardform-toroot%s">
+        <input type="text" name="login" value="%s"/>
+        <input type="password" name="password" value="%s"/>
+    </form>
+
+    <a class="toroot" onclick="document.getElementById('forwardform-toroot%s').submit();">R</a>
+
+
+    <div id="context-menu">
+        <input name="to" placeholder="Target folder" type="text">
+        <input onclick="submit_movement();" type="submit" value="Move">
+    </div>
+
     %s
 
 </div>
 </body>
+<script type="text/javascript">
+    const contextMenu = $("#context-menu");
+    const contextMenuNative = document.getElementById("context-menu");
+    const scope = document.querySelector("html");
+
+    const normalizePozition = (mouseX, mouseY) => {
+        // ? compute what is the mouse position relative to the container element (scope)
+        let {
+            left: scopeOffsetX,
+            top: scopeOffsetY,
+        } = scope.getBoundingClientRect();
+
+        scopeOffsetX = scopeOffsetX < 0 ? 0 : scopeOffsetX;
+        scopeOffsetY = scopeOffsetY < 0 ? 0 : scopeOffsetY;
+
+        const scopeX = mouseX - scopeOffsetX;
+        const scopeY = mouseY - scopeOffsetY;
+
+        // ? check if the element will go out of bounds
+        const outOfBoundsOnX =
+            scopeX + contextMenuNative.clientWidth > scope.clientWidth;
+
+        const outOfBoundsOnY =
+            scopeY + contextMenuNative.clientHeight > scope.clientHeight;
+
+        let normalizedX = mouseX;
+        let normalizedY = mouseY;
+
+        // ? normalize on X
+        if (outOfBoundsOnX) {
+            normalizedX =
+                scopeOffsetX + scope.clientWidth - contextMenuNative.clientWidth;
+        }
+
+        // ? normalize on Y
+        if (outOfBoundsOnY) {
+            normalizedY =
+                scopeOffsetY + scope.clientHeight - contextMenuNative.clientHeight;
+        }
+
+        return {normalizedX, normalizedY};
+    };
+
+    document.addEventListener('keyup', function (event) {
+        if (event.key === "Escape") {
+            contextMenu.removeClass("visible");
+        }
+    });
+
+    scope.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+
+        const {clientX: mouseX, clientY: mouseY} = event;
+
+        const {normalizedX, normalizedY} = normalizePozition(mouseX, mouseY);
+
+        contextMenu.removeClass("visible");
+
+        contextMenu.css("top", `${normalizedY}px`);
+        contextMenu.css("left", `${normalizedX}px`);
+
+        setTimeout(() => {
+            contextMenu.addClass("visible");
+        });
+    });
+
+    scope.addEventListener("click", (e) => {
+        if (e.target.offsetParent !== contextMenuNative) {
+            contextMenu.removeClass("visible");
+        }
+    });
+
+
+    function submit_movement() {
+        if (submit_move_item == null) return;
+
+        let to = $('#context-menu input[name=to]').val();
+        if (!to.startsWith('/')) to = '/' + to;
+        while (to.endsWith('/')) to = to.substring(0, to.length - 1);
+
+        submit_move_item(to);
+
+        {
+            let xhr = new XMLHttpRequest();
+            xhr.open('POST', '/explorer/' + to, false);
+            xhr.send('login=%s&password=%s');
+            document.open();
+            document.write(xhr.responseText);
+            document.close();
+        }
+    }
+</script>
 </html>
 )===!";

@@ -27,28 +27,52 @@ static constexpr const char* explorer_page_html =
 
 
 static constexpr const char* explorer_dir_html = R"(
-        <form method="POST" action="/explorer/%s"  style="display: none;" id="forwardform%s">
-	        <input type="text" name="login" value="%s"/>
-	        <input type="password" name="password" value="%s"/>
-	    </form>
+        <form method="POST" action="/explorer/%s" style="display: none;" id="forwardform%s">
+            <input type="text" name="login" value="%s"/>
+            <input type="password" name="password" value="%s"/>
+        </form>
 
-	    <li class="folders">
-	        <a title="EXPLORER/%s" class="folders" onclick="document.getElementById('forwardform%s').submit();">
-	            <span class="icon folder full"></span>
-	            <span class="name">%s</span>
-	            <span class="details">%zu files, %zu folders</span>
-	        </a>
-	    </li>
+        <li class="folders">
+            <a title="EXPLORER/%s" class="folders" onclick="document.getElementById('forwardform%s').submit();"
+               oncontextmenu="
+	        submit_move_item = (to) => {
+	            let formData = new FormData();
+	            let xhr = new XMLHttpRequest();
+	            xhr.open('POST', '/move/%s', false);
+	
+	            formData.append('login', '%s');
+	            formData.append('password', '%s');
+	            formData.append('to', to);
+	
+	            xhr.send(formData);
+	        };">
+                <span class="icon folder full"></span>
+                <span class="name">%s</span>
+                <span class="details">%zu files, %zu folders</span>
+            </a>
+        </li>
 )";
 
 static constexpr const char* explorer_file_html = R"(
-        <form method="POST" action="/explorer/%s"  style="display: none;" id="forwardform%s" target="_blank">
-	        <input type="text" name="login" value="%s"/>
-	        <input type="password" name="password" value="%s"/>
-	    </form>
+        <form method="POST" action="/explorer/%s" style="display: none;" id="forwardform%s" target="_blank">
+            <input type="text" name="login" value="%s"/>
+            <input type="password" name="password" value="%s"/>
+        </form>
 
         <li class="files">
-            <a title="EXPLORER/%s" class="files" onclick="document.getElementById('forwardform%s').submit();">
+            <a title="EXPLORER/%s" class="files" onclick="document.getElementById('forwardform%s').submit();"
+               oncontextmenu="
+            submit_move_item = (to) => {
+                let formData = new FormData();
+                let xhr = new XMLHttpRequest();
+                xhr.open('POST', '/move/%s', false);
+    
+                formData.append('login', '%s');
+                formData.append('password', '%s');
+                formData.append('to', to);
+    
+                xhr.send(formData);
+            };">
                 <span class="icon file f-%s">.%s</span>
                 <span class="name">%s</span>
                 <span class="details">%zu bytes</span>
@@ -68,6 +92,7 @@ static constexpr const char* explorer_dir_empty_html = R"(
         <span>Folder is empty</span>
     </div>
 )";
+
 
 static constexpr const char* deleter_page_html =
 		
