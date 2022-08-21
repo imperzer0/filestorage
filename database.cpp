@@ -20,9 +20,9 @@ void mariadb_create_db(const char* db_user_password)
 				  { "password", db_user_password } }
 		);
 		
-		std::unique_ptr<sql::Connection> conn(driver->connect(url, properties));
+		std::unique_ptr<sql::Connection> connection(driver->connect(url, properties));
 		
-		std::unique_ptr<sql::Statement> stmnt(conn->createStatement());
+		std::unique_ptr<sql::Statement> stmnt(connection->createStatement());
 		
 		stmnt->executeQuery("CREATE DATABASE " DB_NAME);
 	}
@@ -42,9 +42,9 @@ void mariadb_drop_db(const char* db_user_password)
 				  { "password", db_user_password } }
 		);
 		
-		std::unique_ptr<sql::Connection> conn(driver->connect(url, properties));
+		std::unique_ptr<sql::Connection> connection(driver->connect(url, properties));
 		
-		std::unique_ptr<sql::Statement> stmnt(conn->createStatement());
+		std::unique_ptr<sql::Statement> stmnt(connection->createStatement());
 		
 		stmnt->executeQuery("DROP DATABASE " DB_NAME);
 	}
@@ -64,16 +64,16 @@ std::unique_ptr<sql::Connection> mariadb_connect_to_db(const char* db_user_passw
 				  { "password", db_user_password } }
 		);
 		
-		auto conn = driver->connect(url, properties);
-		return std::unique_ptr<sql::Connection>(conn);
+		auto connection = driver->connect(url, properties);
+		return std::unique_ptr<sql::Connection>(connection);
 	}
 	catch (sql::SQLException& e) { MG_ERROR(("Table creation failed: %s", e.what())); }
 	return nullptr;
 }
 
-void mariadb_create_table(sql::Connection* conn)
+void mariadb_create_table(sql::Connection* connection)
 {
-	if (!conn)
+	if (!connection)
 	{
 		MG_ERROR(("Connection is nullptr."));
 		return;
@@ -83,7 +83,7 @@ void mariadb_create_table(sql::Connection* conn)
 	
 	try
 	{
-		std::unique_ptr<sql::Statement> stmnt(conn->createStatement());
+		std::unique_ptr<sql::Statement> stmnt(connection->createStatement());
 		
 		stmnt->executeQuery(
 				"CREATE TABLE " TABLE_NAME " "
@@ -94,9 +94,9 @@ void mariadb_create_table(sql::Connection* conn)
 	catch (sql::SQLException& e) { MG_ERROR(("Table creation failed: %s", e.what())); }
 }
 
-int mariadb_user_insert(sql::Connection* conn, const char* login, const char* password)
+int mariadb_user_insert(sql::Connection* connection, const char* login, const char* password)
 {
-	if (!conn)
+	if (!connection)
 	{
 		MG_ERROR(("Connection is nullptr."));
 		return 0;
@@ -107,7 +107,7 @@ int mariadb_user_insert(sql::Connection* conn, const char* login, const char* pa
 	try
 	{
 		std::unique_ptr<sql::PreparedStatement> stmnt(
-				conn->prepareStatement("INSERT INTO " TABLE_NAME " ( login, password ) values( ?,? );")
+				connection->prepareStatement("INSERT INTO " TABLE_NAME " ( login, password ) values( ?,? );")
 		);
 		
 		stmnt->setString(1, login);
@@ -120,9 +120,9 @@ int mariadb_user_insert(sql::Connection* conn, const char* login, const char* pa
 	return 0;
 }
 
-void mariadb_user_update(sql::Connection* conn, const char* login, const char* password)
+void mariadb_user_update(sql::Connection* connection, const char* login, const char* password)
 {
-	if (!conn)
+	if (!connection)
 	{
 		MG_ERROR(("Connection is nullptr."));
 		return;
@@ -132,7 +132,7 @@ void mariadb_user_update(sql::Connection* conn, const char* login, const char* p
 	
 	try
 	{
-		std::unique_ptr<sql::PreparedStatement> stmnt(conn->prepareStatement("UPDATE " TABLE_NAME " SET password=? WHERE login=?;"));
+		std::unique_ptr<sql::PreparedStatement> stmnt(connection->prepareStatement("UPDATE " TABLE_NAME " SET password=? WHERE login=?;"));
 		
 		stmnt->setString(1, password);
 		stmnt->setString(2, login);
@@ -142,9 +142,9 @@ void mariadb_user_update(sql::Connection* conn, const char* login, const char* p
 	catch (sql::SQLException& e) { MG_ERROR(("User creation failed: %s", e.what())); }
 }
 
-const char* mariadb_user_get_password(sql::Connection* conn, const char* login)
+const char* mariadb_user_get_password(sql::Connection* connection, const char* login)
 {
-	if (!conn)
+	if (!connection)
 	{
 		MG_ERROR(("Connection is nullptr."));
 		return nullptr;
@@ -154,7 +154,7 @@ const char* mariadb_user_get_password(sql::Connection* conn, const char* login)
 	
 	try
 	{
-		std::unique_ptr<sql::PreparedStatement> stmnt(conn->prepareStatement("SELECT password FROM " TABLE_NAME " WHERE login=?;"));
+		std::unique_ptr<sql::PreparedStatement> stmnt(connection->prepareStatement("SELECT password FROM " TABLE_NAME " WHERE login=?;"));
 		
 		stmnt->setString(1, login);
 		

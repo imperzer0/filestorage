@@ -18,13 +18,13 @@ void mariadb_drop_db(const char* db_user_password);
 
 std::unique_ptr<sql::Connection> mariadb_connect_to_db(const char* db_user_password);
 
-void mariadb_create_table(sql::Connection* conn);
+void mariadb_create_table(sql::Connection* connection);
 
-int mariadb_user_insert(sql::Connection* conn, const char* login, const char* password);
+int mariadb_user_insert(sql::Connection* connection, const char* login, const char* password);
 
-void mariadb_user_update(sql::Connection* conn, const char* login, const char* password);
+void mariadb_user_update(sql::Connection* connection, const char* login, const char* password);
 
-const char* mariadb_user_get_password(sql::Connection* conn, const char* login);
+const char* mariadb_user_get_password(sql::Connection* connection, const char* login);
 
 
 #endif //FILESTORAGE_DATABASE_H
