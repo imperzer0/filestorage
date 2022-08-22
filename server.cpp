@@ -280,6 +280,17 @@ inline void handle_explorer_html(struct mg_connection* connection, struct mg_htt
 		if (S_ISREG(st.st_mode))
 		{
 			struct mg_http_serve_opts opts{ };
+			std::string extra_header;
+			
+			if (st.st_size > MAX_INLINE_FILE_SIZE)
+			{
+				extra_header = "Content-Disposition: attachment; filename=\"";
+				extra_header += path_basename(path.c_str());
+				extra_header += "\"\r\n";
+				
+				opts.extra_headers = extra_header.c_str();
+			}
+			
 			mg_http_serve_file(connection, msg, path.c_str(), &opts);
 			
 			delete[] dir;

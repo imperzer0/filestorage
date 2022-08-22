@@ -7,9 +7,10 @@ R"===!(
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Storage Explorer</title>
-    <style type="text/css">
-        @charset "utf-8";
 
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+    <style type="text/css">
 
         /*-------------------------
             Simple reset
@@ -18,6 +19,12 @@ R"===!(
         * {
             margin: 0;
             padding: 0;
+            font-family: monospace;
+        }
+
+        html {
+            height: 100%;
+            width: 100%;
         }
 
 
@@ -26,8 +33,7 @@ R"===!(
         -------------------------*/
 
         body {
-            background-color: #7e1828;
-            font: 14px normal Arial, Helvetica, sans-serif;
+            background-color: #705347;
             z-index: -4;
         }
 
@@ -60,7 +66,7 @@ R"===!(
         .filemanager .breadcrumbs {
             color: #ffffff;
             margin-left: 20px;
-            font-family: Inconsolata, monospace;
+            font-family: monospace;
             font-size: 24px;
             font-weight: 700;
             line-height: 35px;
@@ -173,12 +179,12 @@ R"===!(
         }
 
         .filemanager .nothingfound {
-            background-color: #072743;
+            background-color: rgba(255, 223, 8, 0.3);
             width: 23em;
             height: 21em;
-            margin: 0 auto;
+            margin: 5em auto;
             display: none;
-            font-family: Arial;
+            font-family: Arial, sans-serif;
             -webkit-animation: showSlowlyElement 700ms; /* Chrome, Safari, Opera */
             animation: showSlowlyElement 700ms; /* Standard syntax */
         }
@@ -188,7 +194,8 @@ R"===!(
             top: 3em;
             border-radius: 50%;
             position: relative;
-            background-color: #d72f6e;
+            background-color: rgba(148, 67, 94);
+            font-family: Arial, sans-serif;
             width: 11em;
             height: 11em;
             line-height: 11.4em;
@@ -198,20 +205,21 @@ R"===!(
             content: '×';
             position: absolute;
             color: #ffffff;
+            font-family: Arial, sans-serif;
             font-size: 14em;
             margin-right: 0.092em;
             right: 0;
         }
 
         .filemanager .nothingfound span {
-            margin: 0 auto auto 6.8em;
+            margin: 0 auto auto 5em;
             color: #ffffff;
-            font-size: 16px;
+            font-size: 20px;
             font-weight: 700;
             line-height: 20px;
             height: 13px;
             position: relative;
-            top: 2em;
+            top: 3em;
         }
 
         @media all and (max-width: 965px) {
@@ -402,19 +410,23 @@ R"===!(
         }
 
         .icon.file.f-deb,
+        .icon.file.f-rpm,
         .icon.file.f-dmg,
         .icon.file.f-gz,
         .icon.file.f-rar,
         .icon.file.f-zip,
+        .icon.file.f-zst,
         .icon.file.f-7z {
             box-shadow: 1.74em -2.1em 0 0 #867c75 inset;
         }
 
         .icon.file.f-deb:after,
+        .icon.file.f-rpm:after,
         .icon.file.f-dmg:after,
         .icon.file.f-gz:after,
         .icon.file.f-rar:after,
         .icon.file.f-zip:after,
+        .icon.file.f-zst:after,
         .icon.file.f-7z:after {
             border-bottom-color: #685f58;
         }
@@ -451,6 +463,44 @@ R"===!(
         .icon.file.f-saas:after,
         .icon.file.f-scss:after {
             border-bottom-color: #30837c;
+        }
+
+        .icon.file.f-bin,
+        .icon.file.f-o {
+            box-shadow: 1.74em -2.1em 0 0 #0f1f36 inset;
+        }
+
+        .icon.file.f-bin:after,
+        .icon.file.f-o:after {
+            border-bottom-color: #000000;
+        }
+
+        .icon.file.f-c,
+        .icon.file.f-cpp {
+            box-shadow: 1.74em -2.1em 0 0 #8b77ba inset;
+        }
+
+        .icon.file.f-c:after,
+        .icon.file.f-cpp:after {
+            border-bottom-color: #67588a;
+        }
+
+        .icon.file.f-h,
+        .icon.file.f-hpp {
+            box-shadow: 1.74em -2.1em 0 0 #b48538 inset;
+        }
+
+        .icon.file.f-h:after,
+        .icon.file.f-hpp:after {
+            border-bottom-color: #8a662b;
+        }
+
+        .icon.file.f-gitignore {
+            box-shadow: 1.74em -2.1em 0 0 #818c95 inset;
+        }
+
+        .icon.file.f-gitignore:after {
+            border-bottom-color: #646c73;
         }
 
 
@@ -540,10 +590,42 @@ R"===!(
             margin-right: 30px;
             padding: 9px 12px 0 12px;
             border-radius: 7px;
-            background-color: rgba(0, 255, 0, 0.4);
+            background-color: rgba(255, 0, 0, 0.4);
             cursor: pointer;
             right: 0;
-            font-family: Inconsolata, monospace;
+            font-family: monospace;
+            font-size: 30px;
+            font-weight: bold;
+            color: #ffffff;
+            display: block;
+            text-decoration: none;
+        }
+
+        .filemanager .upload {
+            position: absolute;
+            margin-right: 100px;
+            padding: 9px 12px 0 12px;
+            border-radius: 7px;
+            background-color: rgba(0, 255, 255, 0.5);
+            cursor: pointer;
+            right: 0;
+            font-family: monospace;
+            font-size: 30px;
+            font-weight: bold;
+            color: #ffffff;
+            display: block;
+            text-decoration: none;
+        }
+
+        .filemanager .toroot {
+            position: absolute;
+            margin-right: 170px;
+            padding: 9px 12px 0 12px;
+            border-radius: 7px;
+            background-color: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            right: 0;
+            font-family: monospace;
             font-size: 30px;
             font-weight: bold;
             color: #ffffff;

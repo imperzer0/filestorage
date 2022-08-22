@@ -180,12 +180,12 @@ R"===!(
         }
 
         .filemanager .nothingfound {
-            background-color: #072743;
+            background-color: rgba(255, 223, 8, 0.3);
             width: 23em;
             height: 21em;
-            margin: 0 auto;
+            margin: 5em auto;
             display: none;
-            font-family: Arial;
+            font-family: Arial, sans-serif;
             -webkit-animation: showSlowlyElement 700ms; /* Chrome, Safari, Opera */
             animation: showSlowlyElement 700ms; /* Standard syntax */
         }
@@ -195,7 +195,8 @@ R"===!(
             top: 3em;
             border-radius: 50%;
             position: relative;
-            background-color: #d72f6e;
+            background-color: rgba(148, 67, 94);
+            font-family: Arial, sans-serif;
             width: 11em;
             height: 11em;
             line-height: 11.4em;
@@ -205,20 +206,21 @@ R"===!(
             content: '×';
             position: absolute;
             color: #ffffff;
+            font-family: Arial, sans-serif;
             font-size: 14em;
             margin-right: 0.092em;
             right: 0;
         }
 
         .filemanager .nothingfound span {
-            margin: 0 auto auto 6.8em;
+            margin: 0 auto auto 5em;
             color: #ffffff;
-            font-size: 16px;
+            font-size: 20px;
             font-weight: 700;
             line-height: 20px;
             height: 13px;
             position: relative;
-            top: 2em;
+            top: 3em;
         }
 
         @media all and (max-width: 965px) {
