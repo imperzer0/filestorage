@@ -2,7 +2,7 @@
 # Maintained by imper <imperator999mcpe@gmail.com>
 
 pkgname=filestorage
-pkgver=8.0
+pkgver=9.0
 pkgrel=1
 pkgdesc='File storage service server for linux'
 author="imperzer0"
@@ -17,6 +17,7 @@ _libfiles=("CMakeLists.txt" "main.cpp"
 	"server.cpp" "server.h"
 	"database.cpp" "database.h"
 	"constants.hpp" "resources.hpp"
+	"sha256.cpp" "sha256.hpp"
 )
 
 _rcfiles=(

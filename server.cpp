@@ -10,6 +10,7 @@
 #include "strscan.c"
 #include "resources.hpp"
 #include "database.h"
+#include "sha256.hpp"
 
 
 const char* address = DEFAULT_SERVER_ADDRESS;
@@ -499,7 +500,7 @@ inline void handle_uploader_html(struct mg_connection* connection, struct mg_htt
 
 inline void handle_upload_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
 {
-	char* login = new char[1]{ }, * password = new char[1]{ }, * filename = new char[1]{ };
+	char* login = new char[1]{ }, * password = new char[1]{ }, * filename = new char[1]{ }, * sha = new char[1]{ };
 	long long pos = -1;
 	
 	struct mg_http_part form_part{ };
@@ -533,12 +534,28 @@ inline void handle_upload_html(struct mg_connection* connection, struct mg_http_
 			delete[] filename;
 			filename = strndup(form_part.body.ptr, form_part.body.len);
 		}
+		else if (!strncmp(form_part.name.ptr, "sha", form_part.name.len))
+		{
+			delete[] sha;
+			sha = strndup(form_part.body.ptr, form_part.body.len);
+		}
 		else if (!strncmp(form_part.name.ptr, "file", form_part.name.len) && *filename && pos >= 0)
 		{
 			auto conn = mariadb_connect_to_db(database_user_password);
 			auto db_password = mariadb_user_get_password(conn.get(), login);
 			if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
 			{
+				if (sha256(std::string(form_part.body.ptr, form_part.body.len)) != sha)
+				{
+					delete[] login;
+					delete[] password;
+					delete[] filename;
+					delete[] sha;
+					
+					mg_http_reply(connection, 200, "Content-Type: text/plain\r\n", "Fail");
+					return;
+				}
+				
 				char* dir_rel;
 				auto dir = new char[msg->uri.len + MAX_LOGIN]{ };
 				
@@ -562,6 +579,9 @@ inline void handle_upload_html(struct mg_connection* connection, struct mg_http_
 					delete[] login;
 					delete[] password;
 					delete[] filename;
+					delete[] sha;
+					
+					mg_http_reply(connection, 200, "Content-Type: text/plain\r\n", "Fail");
 					return;
 				}
 				
@@ -585,6 +605,7 @@ inline void handle_upload_html(struct mg_connection* connection, struct mg_http_
 	delete[] login;
 	delete[] password;
 	delete[] filename;
+	delete[] sha;
 }
 
 inline void handle_mkdir_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
@@ -978,3 +999,5 @@ inline char* http_get_ret_path_raw(struct mg_http_message* msg)
 	
 	return ret_path_raw;
 }
+
+#include "sha256.cpp"
