@@ -21,6 +21,56 @@ else ()
     message("Enabled optimization compiler flags.")
 endif ()
 
-add_executable(filestorage main.cpp server.h server.cpp constants.hpp resources.hpp)
+set(resource_files
+        "deleter.html"
+        "error404.html"
+        "explorer.html"
+        "filestorageconf.lua"
+        "index.html"
+        "invalid_credentials.html"
+        "uploader.html")
 
-target_link_libraries(filestorage mariadb mariadbcpp)
+# Creates C resources file from files in given directory
+function(create_resources output)
+    # Create empty output file
+    file(WRITE ${output}
+            "#ifndef FILESTORAGE_RESOURCES_HPP\n"
+            "#define FILESTORAGE_RESOURCES_HPP\n"
+            "\n"
+            " #define LEN(name) name##_len\n"
+            "\n")
+    # Iterate through input files
+    foreach (bin ${resource_files})
+        message("[RC] Generating ${bin} resource...")
+        file(REAL_PATH ${bin} freal)
+        file(SIZE ${freal} fsize)
+        # Get short filename
+        string(REGEX MATCH "([^/]+)$" filename ${bin})
+        # Replace filename spaces & extension separator for C compatibility
+        string(REGEX REPLACE "\\.| |-" "_" filename ${filename})
+        # Read hex data from file
+        file(READ ${bin} filedata HEX)
+        if (NOT "${fsize}" STREQUAL "0")
+            # Convert hex data for C compatibility
+            string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," filedata ${filedata})
+        endif ()
+        # Append data to output file
+        file(APPEND ${output}
+                "\n"
+                "#ifndef RESOURCE_${filename}\n"
+                "#define RESOURCE_${filename}\n"
+                " static constexpr const unsigned char ${filename}[] = {${filedata} 0};\n"
+                " static constexpr const unsigned ${filename}_len = ${fsize};\n"
+                "#endif\n"
+                "\n")
+    endforeach ()
+    # Create empty output file
+    file(APPEND ${output} "\n#endif //FILESTORAGE_RESOURCES_HPP")
+endfunction()
+
+create_resources("resources.hpp")
+
+
+add_executable(filestorage main.cpp server.h server.cpp constants.hpp config_script.cpp templates.hpp)
+
+target_link_libraries(filestorage mariadb mariadbcpp lua)

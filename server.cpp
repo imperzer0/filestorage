@@ -4,6 +4,7 @@
 // Personal usage is allowed only if this comment was not changed or deleted.
 // Commercial usage must be agreed with the author of this comment.
 
+
 #include "server.h"
 #include "mongoose.c"
 #include "constants.hpp"
@@ -11,6 +12,7 @@
 #include "resources.hpp"
 #include "database.h"
 #include "sha256.hpp"
+#include "config_script.h"
 
 
 const char* address = DEFAULT_SERVER_ADDRESS;
@@ -89,6 +91,8 @@ inline void handle_mkdir_html(struct mg_connection* connection, struct mg_http_m
 
 inline void handle_move_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password);
 
+inline void handle_extension_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password);
+
 
 inline void handle_http_message(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
 {
@@ -112,7 +116,9 @@ inline void handle_http_message(struct mg_connection* connection, struct mg_http
 		handle_mkdir_html(connection, msg, database_user_password);
 	else if (starts_with(msg->uri.ptr, "/move/"))
 		handle_move_html(connection, msg, database_user_password);
-	else mg_http_reply(connection, 404, "Content-Type: text/html\r\n", _404_html);
+	else if (starts_with(msg->uri.ptr, "/extension/"))
+		handle_extension_html(connection, msg, database_user_password);
+	else mg_http_reply(connection, 404, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(error404_html));
 }
 
 
@@ -138,6 +144,8 @@ void server_initialize(const char* database_user_password)
 	mariadb_create_db(database_user_password);
 	auto connection = mariadb_connect_to_db(database_user_password);
 	mariadb_create_table(connection.get());
+	
+	init_config_script();
 }
 
 void server_run(const char* database_user_password)
@@ -173,9 +181,9 @@ inline void handle_index_html(struct mg_connection* connection, struct mg_http_m
 	char* ret_path = http_get_ret_path_raw(msg);
 	
 	if (*ret_path)
-		mg_http_reply(connection, 200, "Content-Type: text/html\r\n", index_page_html, ret_path, ret_path);
+		mg_http_reply(connection, 200, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(index_html), ret_path, ret_path);
 	else
-		mg_http_reply(connection, 200, "Content-Type: text/html\r\n", index_page_html, "", "");
+		mg_http_reply(connection, 200, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(index_html), "", "");
 	
 	delete[] ret_path;
 }
@@ -203,7 +211,7 @@ inline void handle_login_html(struct mg_connection* connection, struct mg_http_m
 		
 		mg_http_reply(
 				connection, 200, "Content-Type: text/html\r\n",
-				invalid_credentials_page_html,
+				reinterpret_cast<const char*>(invalid_credentials_html),
 				"Invalid credentials.<br/>Please register or contact support to recover your account.",
 				ret_path, login, password, ret_path, login, password
 		);
@@ -225,7 +233,7 @@ inline void handle_register_html(struct mg_connection* connection, struct mg_htt
 		
 		mg_http_reply(
 				connection, 200, "Content-Type: text/html\r\n",
-				invalid_credentials_page_html,
+				reinterpret_cast<const char*>(invalid_credentials_html),
 				"User already exists.<br/>Try out another username.",
 				ret_path, "", "", ret_path, login, password
 		);
@@ -271,7 +279,7 @@ inline void handle_explorer_html(struct mg_connection* connection, struct mg_htt
 		struct stat st{ };
 		if (::stat(path.c_str(), &st) < 0)
 		{
-			mg_http_reply(connection, 404, "Content-Type: text/html\r\n", _404_html);
+			mg_http_reply(connection, 404, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(error404_html));
 			
 			delete[] dir;
 			delete[] dir_rel;
@@ -302,7 +310,7 @@ inline void handle_explorer_html(struct mg_connection* connection, struct mg_htt
 		auto dir_rel_dirname = path_dirname(dir_rel);
 		
 		mg_http_reply(
-				connection, 200, "Content-Type: text/html\r\n", explorer_page_html,
+				connection, 200, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(explorer_html),
 				dir_rel_dirname, dir_rel_dirname, login, password,
 				dir_rel_dirname, dir_rel_dirname, path_basename(dir_rel),
 				dir_rel, dir_rel, login, password, dir_rel,
@@ -358,7 +366,7 @@ inline void handle_deleter_html(struct mg_connection* connection, struct mg_http
 		struct stat st{ };
 		if (::stat(path.c_str(), &st) < 0)
 		{
-			mg_http_reply(connection, 404, "Content-Type: text/html\r\n", _404_html);
+			mg_http_reply(connection, 404, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(error404_html));
 			
 			delete[] dir;
 			delete[] dir_rel;
@@ -378,7 +386,7 @@ inline void handle_deleter_html(struct mg_connection* connection, struct mg_http
 		auto dir_rel_dirname = path_dirname(dir_rel);
 		
 		mg_http_reply(
-				connection, 200, "Content-Type: text/html\r\n", deleter_page_html,
+				connection, 200, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(deleter_html),
 				dir_rel, dir_rel, dir_rel, login, password, dir_rel,
 				directory_list_html(
 						dir_rel, dir, login, password,
@@ -471,7 +479,7 @@ inline void handle_uploader_html(struct mg_connection* connection, struct mg_htt
 		struct stat st{ };
 		if (::stat(path.c_str(), &st) < 0 && S_ISDIR(st.st_mode))
 		{
-			mg_http_reply(connection, 404, "Content-Type: text/html\r\n", _404_html);
+			mg_http_reply(connection, 404, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(error404_html));
 			
 			delete[] dir;
 			delete[] dir_rel;
@@ -479,7 +487,7 @@ inline void handle_uploader_html(struct mg_connection* connection, struct mg_htt
 		}
 		
 		mg_http_reply(
-				connection, 200, "Content-Type: text/html\r\n", uploader_page_html,
+				connection, 200, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(uploader_html),
 				dir_rel, dir_rel, login, password, dir_rel, dir_rel, dir_rel, dir_rel,
 				dir_rel, login, password, dir_rel, login, password, dir_rel, login, password, dir_rel, login, password
 		);
@@ -756,8 +764,44 @@ inline void handle_move_html(struct mg_connection* connection, struct mg_http_me
 	delete[] password;
 }
 
+inline void handle_extension_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
+{
+	char login[MAX_LOGIN]{ }, password[MAX_PASSWORD]{ };
+	mg_http_get_var(&msg->body, "login", login, MAX_LOGIN);
+	mg_http_get_var(&msg->body, "password", password, MAX_PASSWORD);
+	
+	auto conn = mariadb_connect_to_db(database_user_password);
+	auto db_password = mariadb_user_get_password(conn.get(), login);
+	if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
+	{
+		char* extension, * dir;
+		
+		char* uri = new char[msg->uri.len + 1];
+		strncpy(uri, msg->uri.ptr, msg->uri.len);
+		uri[msg->uri.len] = 0;
+		
+		strscanf(uri, "/extension/%s/%s", &extension, &dir);
+		
+		auto res = call_lua_extension({ .login = login, .password = password, .name = extension, .argument = dir });
+		
+		mg_http_reply(connection, res.response_code, "Content-Type: text/html\r\n", res.page.c_str());
+		
+		delete[] dir;
+	}
+	else
+	{
+		char* curr_url = new char[msg->uri.len * 3]{ };
+		mg_url_encode(msg->uri.ptr, msg->uri.len, curr_url, msg->uri.len * 3 - 1);
+		
+		http_redirect_to(connection, "/?return_to=%s", curr_url);
+		
+		delete[] curr_url;
+	}
+}
+
 
 #include "database.cpp"
+#include "templates.hpp"
 
 
 inline static consteval size_t static_strlen(const char* str)

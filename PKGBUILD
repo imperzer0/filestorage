@@ -2,28 +2,30 @@
 # Maintained by imper <imperator999mcpe@gmail.com>
 
 pkgname=filestorage
-pkgver=9.0
+pkgver=10.0
 pkgrel=1
 pkgdesc='File storage service server for linux'
 author="imperzer0"
 arch=('any')
 url=https://github.com/$author/$pkgname
 license=('GPL3')
-depends=('openssl' 'gcc' 'mariadb' 'mariadb-connector-cpp-git')
-makedepends=('cmake' 'git' 'gcc' 'make' 'mariadb-connector-cpp-git')
+depends=('openssl' 'gcc' 'mariadb' 'mariadb-connector-cpp-git' 'lua')
+makedepends=('cmake' 'git' 'gcc' 'make' 'mariadb-connector-cpp-git' 'lua')
 
 _srcprefix="local:/"
 _libfiles=("CMakeLists.txt" "main.cpp"
 	"server.cpp" "server.h"
 	"database.cpp" "database.h"
-	"constants.hpp" "resources.hpp"
+	"constants.hpp" "templates.hpp"
 	"sha256.cpp" "sha256.hpp"
+	"config_script.cpp" "config_script.h"
 )
 
 _rcfiles=(
-	"resources/404.html"
 	"resources/deleter.html"
+	"resources/error404.html"
 	"resources/explorer.html"
+	"resources/filestorageconf.lua"
 	"resources/index.html"
 	"resources/invalid_credentials.html"
 	"resources/uploader.html"

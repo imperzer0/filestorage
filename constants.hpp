@@ -50,4 +50,8 @@
 #  define MAX_INLINE_FILE_SIZE 16777216 // 16 MB
 # endif
 
+# ifndef CONFIG_SCRIPT_FILE
+#  define CONFIG_SCRIPT_FILE "filestorageconf.lua"
+# endif
+
 #endif //FILESTORAGE_CONSTANTS_HPP

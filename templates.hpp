@@ -1,29 +1,9 @@
 //
-// Created by imper on 8/17/22.
+// Created by imper on 8/29/22.
 //
 
-#ifndef FILESTORAGE_RESOURCES_HPP
-#define FILESTORAGE_RESOURCES_HPP
-
-
-static constexpr const char* _404_html =
-		
-		#include "404.html"
-
-
-static constexpr const char* index_page_html =
-		
-		#include "index.html"
-
-
-static constexpr const char* invalid_credentials_page_html =
-		
-		#include "invalid_credentials.html"
-
-
-static constexpr const char* explorer_page_html =
-		
-		#include "explorer.html"
+#ifndef FILESTORAGE_TEMPLATES_HPP
+#define FILESTORAGE_TEMPLATES_HPP
 
 
 static constexpr const char* explorer_dir_html = R"(
@@ -94,11 +74,6 @@ static constexpr const char* explorer_dir_empty_html = R"(
 )";
 
 
-static constexpr const char* deleter_page_html =
-		
-		#include "deleter.html"
-
-
 static constexpr const char* deleter_dir_html = R"(
     <li class="folders">
         <a title="EXPLORER/%s" class="folders" onclick="
@@ -156,9 +131,4 @@ static constexpr const char* deleter_file_html = R"(
 )";
 
 
-static constexpr const char* uploader_page_html =
-		
-		#include "uploader.html"
-
-
-#endif //FILESTORAGE_RESOURCES_HPP
+#endif //FILESTORAGE_TEMPLATES_HPP
