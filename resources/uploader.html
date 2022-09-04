@@ -2903,6 +2903,17 @@
 
                 setTimeout(loop, 1);
 
+                function finish(end) {
+                    moveProgressBar();
+
+                    if (end < size) {
+                        setTimeout(loop, 1);
+                        start += sliceSize;
+                    } else {
+                        setTimeout(finalize, 600);
+                    }
+                }
+
                 function loop() {
                     let end = start + sliceSize;
 
@@ -2920,18 +2931,11 @@
                     $(".progress-wrap").attr("data-progress-percent", progress + "");
                     console.log("attribute = " + $(".progress-wrap").attr("data-progress-percent"));
 
-                    if (end < size) {
-                        moveProgressBar();
-                        send(s, start, loop);
-                        start += sliceSize;
-                    } else {
-                        moveProgressBar();
-                        setTimeout(finalize, 500);
-                    }
+                    send(s, start, end, finish);
                 }
             }
 
-            function send(piece, start, continue_fn) {
+            function send(piece, start, end, continue_fn) {
                 let piece_reader = new FileReader();
                 piece_reader.onload = async function (evt) {
                     let sha = CryptoJS.algo.SHA256.create();
@@ -2957,7 +2961,7 @@
                     console.log(xhr.status + " " + xhr.responseText);
                     if (xhr.status !== 200 || xhr.responseText !== 'Ok') {
                         JSalert_transmission_error(file.name, continue_fn);
-                    } else setTimeout(continue_fn, 1);
+                    } else setTimeout(continue_fn, 1, end);
                 }
                 piece_reader.readAsArrayBuffer(piece);
             }
