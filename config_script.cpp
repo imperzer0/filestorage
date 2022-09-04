@@ -21,6 +21,7 @@
 #include <cstdio>
 #include <sys/stat.h>
 #include <string>
+#include <pthread.h>
 
 #include <lua.hpp>
 
@@ -28,7 +29,8 @@
 #define LUA_ASSERT(expr, ret_expr) if (assert(expr)) return ret_expr
 
 
-static lua_State* config_script = luaL_newstate();
+static lua_State* config_script = nullptr;
+static pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
 #ifndef EXTERNAL_TEST
 
@@ -51,7 +53,7 @@ inline static bool assert(int r)
 }
 
 
-void overwrite_config()
+inline static void overwrite_config()
 {
 	#ifndef EXTERNAL_TEST
 	FILE* fp = fopen(CONFIG_SCRIPT_FILE, "wb");
@@ -60,9 +62,41 @@ void overwrite_config()
 	#endif
 }
 
+inline static void refresh_config_script();
+
+void* config_initialization_thread_th(void*)
+{
+	while (true)
+	{
+		refresh_config_script();
+		usleep(10'000'000); // every 10 seconds
+	}
+}
+
+void config_initialization_thread()
+{
+	init_config_script();
+	
+	pthread_t thread;
+	pthread_create(&thread, nullptr, &config_initialization_thread_th, nullptr);
+	pthread_detach(thread);
+}
+
+
+class mutex_locker
+{
+public:
+	mutex_locker() { pthread_mutex_lock(&mutex); }
+	
+	~mutex_locker() { pthread_mutex_unlock(&mutex); }
+};
+
 void init_config_script()
 {
-	// init lua state
+	mutex_locker locker;
+	
+	close_config_script();
+	
 	config_script = luaL_newstate();
 	luaL_openlibs(config_script);
 	
@@ -80,31 +114,35 @@ void init_config_script()
 		return;
 	}
 	
+	refresh_config_script();
+}
+
+inline static void refresh_config_script()
+{
+	MG_INFO(("Refreshing Lua configuration script context..."));
+	
 	lua_newtable(config_script);
 	lua_setglobal(config_script, "Extensions");
 	
-	luaL_dostring(config_script, R"===(
-table.tostring = function(table)
-    local next = next
-    if next(table) == nil then
-       return "{ }"
-    end
-    result = "{ "
-    for k, v in pairs(table) do
-        result = result .. "'" .. tostring(k) .. "': '" .. tostring(v) .. "', "
-    end
-    result = string.sub(result, 1, string.len(result) - 2)
-    return result .. " }"
-end
-)===");
+	LUA_ASSERT(luaL_dostring(config_script, reinterpret_cast<const char*>(config_lib_lua)),);
 	
 	LUA_ASSERT(luaL_dofile(config_script, CONFIG_SCRIPT_FILE),);
 }
 
-void close_config_script() { lua_close(config_script); }
+void close_config_script()
+{
+	mutex_locker locker;
+	if (config_script)
+	{
+		lua_close(config_script);
+		config_script = nullptr;
+	}
+}
 
 extension_response call_lua_extension(const extension_data& data)
 {
+	mutex_locker locker;
+	
 	lua_getglobal(config_script, "Extensions");
 	
 	lua_getfield(config_script, -1, data.name.c_str());
@@ -119,6 +157,9 @@ extension_response call_lua_extension(const extension_data& data)
 	
 	lua_pushstring(config_script, data.name.c_str());
 	lua_setfield(config_script, -2, "name");
+	
+	lua_pushboolean(config_script, data.valid);
+	lua_setfield(config_script, -2, "valid");
 	
 	lua_pushstring(config_script, data.argument.c_str());
 	

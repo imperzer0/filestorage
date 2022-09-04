@@ -2,7 +2,7 @@
 # Maintained by imper <imperator999mcpe@gmail.com>
 
 pkgname=filestorage
-pkgver=10.1
+pkgver=10.2
 pkgrel=1
 pkgdesc='File storage service server for linux'
 author="imperzer0"
@@ -22,8 +22,9 @@ _libfiles=("CMakeLists.txt" "main.cpp"
 )
 
 _rcfiles=(
+	"resources/config_lib.lua"
 	"resources/deleter.html"
-	"resources/error404.html"
+	"resources/error.html"
 	"resources/explorer.html"
 	"resources/filestorageconf.lua"
 	"resources/index.html"

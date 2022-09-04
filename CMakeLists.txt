@@ -22,13 +22,15 @@ else ()
 endif ()
 
 set(resource_files
+        "config_lib.lua"
         "deleter.html"
-        "error404.html"
+        "error.html"
         "explorer.html"
         "filestorageconf.lua"
         "index.html"
         "invalid_credentials.html"
-        "uploader.html")
+        "uploader.html"
+        )
 
 # Creates C resources file from files in given directory
 function(create_resources output)
@@ -73,4 +75,4 @@ create_resources("resources.hpp")
 
 add_executable(filestorage main.cpp server.h server.cpp constants.hpp config_script.cpp templates.hpp)
 
-target_link_libraries(filestorage mariadb mariadbcpp lua)
+target_link_libraries(filestorage mariadb mariadbcpp lua pthread)

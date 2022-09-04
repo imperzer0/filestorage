@@ -93,6 +93,14 @@ inline void handle_move_html(struct mg_connection* connection, struct mg_http_me
 
 inline void handle_extension_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password);
 
+inline void send_error_html(struct mg_connection* connection, int code, const char* color)
+{
+	mg_http_reply(
+			connection, code, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(error_html),
+			"rgba(147, 0, 0, 0.90)", "rgba(147, 0, 0, 0.90)", "rgba(147, 0, 0, 0.90)", "rgba(147, 0, 0, 0.90)", code
+	);
+}
+
 
 inline void handle_http_message(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
 {
@@ -118,7 +126,7 @@ inline void handle_http_message(struct mg_connection* connection, struct mg_http
 		handle_move_html(connection, msg, database_user_password);
 	else if (starts_with(msg->uri.ptr, "/extension/"))
 		handle_extension_html(connection, msg, database_user_password);
-	else mg_http_reply(connection, 404, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(error404_html));
+	else send_error_html(connection, 404, "rgba(147, 0, 0, 0.90)");
 }
 
 
@@ -145,7 +153,7 @@ void server_initialize(const char* database_user_password)
 	auto connection = mariadb_connect_to_db(database_user_password);
 	mariadb_create_table(connection.get());
 	
-	init_config_script();
+	config_initialization_thread();
 }
 
 void server_run(const char* database_user_password)
@@ -279,7 +287,7 @@ inline void handle_explorer_html(struct mg_connection* connection, struct mg_htt
 		struct stat st{ };
 		if (::stat(path.c_str(), &st) < 0)
 		{
-			mg_http_reply(connection, 404, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(error404_html));
+			send_error_html(connection, 404, "rgba(147, 0, 0, 0.90)");
 			
 			delete[] dir;
 			delete[] dir_rel;
@@ -366,7 +374,7 @@ inline void handle_deleter_html(struct mg_connection* connection, struct mg_http
 		struct stat st{ };
 		if (::stat(path.c_str(), &st) < 0)
 		{
-			mg_http_reply(connection, 404, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(error404_html));
+			send_error_html(connection, 404, "rgba(147, 0, 0, 0.90)");
 			
 			delete[] dir;
 			delete[] dir_rel;
@@ -479,7 +487,7 @@ inline void handle_uploader_html(struct mg_connection* connection, struct mg_htt
 		struct stat st{ };
 		if (::stat(path.c_str(), &st) < 0 && S_ISDIR(st.st_mode))
 		{
-			mg_http_reply(connection, 404, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(error404_html));
+			send_error_html(connection, 404, "rgba(147, 0, 0, 0.90)");
 			
 			delete[] dir;
 			delete[] dir_rel;
@@ -771,32 +779,28 @@ inline void handle_extension_html(struct mg_connection* connection, struct mg_ht
 	mg_http_get_var(&msg->body, "password", password, MAX_PASSWORD);
 	
 	auto conn = mariadb_connect_to_db(database_user_password);
+	if (!conn)
+	{
+		send_error_html(connection, 501, "rgba(147, 120, 0, 0.90)");
+		return;
+	}
 	auto db_password = mariadb_user_get_password(conn.get(), login);
-	if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
-	{
-		char* extension, * dir;
-		
-		char* uri = new char[msg->uri.len + 1];
-		strncpy(uri, msg->uri.ptr, msg->uri.len);
-		uri[msg->uri.len] = 0;
-		
-		strscanf(uri, "/extension/%s/%s", &extension, &dir);
-		
-		auto res = call_lua_extension({ .login = login, .password = password, .name = extension, .argument = dir });
-		
-		mg_http_reply(connection, res.response_code, "Content-Type: text/html\r\n", res.page.c_str());
-		
-		delete[] dir;
-	}
-	else
-	{
-		char* curr_url = new char[msg->uri.len * 3]{ };
-		mg_url_encode(msg->uri.ptr, msg->uri.len, curr_url, msg->uri.len * 3 - 1);
-		
-		http_redirect_to(connection, "/?return_to=%s", curr_url);
-		
-		delete[] curr_url;
-	}
+	bool valid = db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0;
+	
+	char* uri = new char[msg->uri.len + 1];
+	strncpy(uri, msg->uri.ptr, msg->uri.len);
+	uri[msg->uri.len] = 0;
+	
+	char* extension, * dir;
+	
+	strscanf(uri, "/extension/%s/%s", &extension, &dir);
+	
+	init_config_script();
+	auto res = call_lua_extension({ .login = login, .password = password, .name = extension, .argument = dir, .valid = valid });
+	
+	mg_http_reply(connection, res.response_code, "Content-Type: text/html\r\n", res.page.c_str());
+	
+	delete[] dir;
 }
 
 
