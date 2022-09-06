@@ -273,7 +273,7 @@ inline void handle_explorer_html(struct mg_connection* connection, struct mg_htt
 	auto db_password = mariadb_user_get_password(conn.get(), login);
 	if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
 	{
-		char* dir_rel;
+		char* dir_rel = nullptr;
 		auto dir = new char[msg->uri.len + MAX_LOGIN]{ };
 		
 		char* uri = new char[msg->uri.len + 1];
@@ -360,7 +360,7 @@ inline void handle_deleter_html(struct mg_connection* connection, struct mg_http
 	auto db_password = mariadb_user_get_password(conn.get(), login);
 	if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
 	{
-		char* dir_rel;
+		char* dir_rel = nullptr;
 		auto dir = new char[msg->uri.len + MAX_LOGIN]{ };
 		
 		char* uri = new char[msg->uri.len + 1];
@@ -431,7 +431,7 @@ inline void handle_delete_html(struct mg_connection* connection, struct mg_http_
 	auto db_password = mariadb_user_get_password(conn.get(), login);
 	if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
 	{
-		char* dir_rel;
+		char* dir_rel = nullptr;
 		auto dir = new char[msg->uri.len + MAX_LOGIN]{ };
 		
 		char* uri = new char[msg->uri.len + 1];
@@ -473,7 +473,7 @@ inline void handle_uploader_html(struct mg_connection* connection, struct mg_htt
 	auto db_password = mariadb_user_get_password(conn.get(), login);
 	if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
 	{
-		char* dir_rel;
+		char* dir_rel = nullptr;
 		auto dir = new char[msg->uri.len + MAX_LOGIN]{ };
 		
 		char* uri = new char[msg->uri.len + 1];
@@ -576,7 +576,7 @@ inline void handle_upload_html(struct mg_connection* connection, struct mg_http_
 					return;
 				}
 				
-				char* dir_rel;
+				char* dir_rel = nullptr;
 				auto dir = new char[msg->uri.len + MAX_LOGIN]{ };
 				
 				char* uri = new char[msg->uri.len + 1];
@@ -657,7 +657,7 @@ inline void handle_mkdir_html(struct mg_connection* connection, struct mg_http_m
 			auto db_password = mariadb_user_get_password(conn.get(), login);
 			if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
 			{
-				char* dir_rel;
+				char* dir_rel = nullptr;
 				auto dir = new char[msg->uri.len + MAX_LOGIN]{ };
 				
 				char* uri = new char[msg->uri.len + 1];
@@ -729,7 +729,7 @@ inline void handle_move_html(struct mg_connection* connection, struct mg_http_me
 			auto db_password = mariadb_user_get_password(conn.get(), login);
 			if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
 			{
-				char* file_rel;
+				char* file_rel = nullptr;
 				auto file = new char[msg->uri.len + MAX_LOGIN]{ };
 				
 				char* uri = new char[msg->uri.len + 1];
@@ -832,6 +832,8 @@ inline void handle_qr_html(struct mg_connection* connection, struct mg_http_mess
 			connection, 200, "Content-Type: image/svg+xml;\r\n",
 			To_svg_string(generate_qr_code(data), 0, bgs.c_str(), fgs.c_str()).c_str()
 	);
+	
+	delete[] data;
 }
 
 
@@ -977,7 +979,7 @@ inline std::string directory_list_html(
 	
 	sprintf(html.data(), explorer_dir_content_html, result.c_str());
 	
-	return html.c_str();
+	return html;
 }
 
 
