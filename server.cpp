@@ -814,30 +814,18 @@ inline void handle_qr_html(struct mg_connection* connection, struct mg_http_mess
 	mg_http_get_var(&msg->query, "bg", bg, 8);
 	mg_http_get_var(&msg->query, "fg", fg, 8);
 	
-	if (*data)
-	{
-		int last = mg_url_decode(data, msg->query.len, data, msg->query.len, 1);
-		data[last] = 0;
-	}
-	
 	
 	std::string bgs, fgs;
 	
 	if (*bg)
-	{
-		int last = mg_url_decode(bg, 8, bg, 8, 1);
-		data[last] = 0;
 		bgs = bg;
-	}
-	else bgs = "#ffffff";
+	else
+		bgs = "#ffffff";
 	
 	if (*fg)
-	{
-		int last = mg_url_decode(fg, 8, fg, 8, 1);
-		data[last] = 0;
 		fgs = fg;
-	}
-	else fgs = "#000000";
+	else
+		fgs = "#000000";
 	
 	
 	mg_http_reply(
@@ -1059,9 +1047,6 @@ inline char* http_get_ret_path(struct mg_http_message* msg)
 		delete[] ret_path;
 		return new char[]{ "/explorer/" };
 	}
-	
-	int last = mg_url_decode(ret_path, msg->query.len, ret_path, msg->query.len, 1);
-	ret_path[last] = 0;
 	
 	return ret_path;
 }
