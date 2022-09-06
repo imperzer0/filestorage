@@ -7,11 +7,12 @@
 
 #include "config_script.h"
 #include "constants.hpp"
+#include "resources.hpp"
 
 
 #ifndef EXTERNAL_TEST
 
-#include "resources.hpp"
+#include "lua_config_libfunctions.h"
 #include "mongoose.h"
 
 
@@ -24,8 +25,10 @@
 #include <pthread.h>
 
 #include <lua.hpp>
+#include <unistd.h>
 
 
+#undef LUA_ASSERT
 #define LUA_ASSERT(expr, ret_expr) if (assert(expr)) return ret_expr
 
 
@@ -119,7 +122,11 @@ void init_config_script()
 
 inline static void refresh_config_script()
 {
+	#ifndef EXTERNAL_TEST
 	MG_INFO(("Refreshing Lua configuration script context..."));
+	#endif
+	
+	register_lib_functions(config_script);
 	
 	lua_newtable(config_script);
 	lua_setglobal(config_script, "Extensions");

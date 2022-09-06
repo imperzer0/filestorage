@@ -13,6 +13,7 @@
 #include "database.h"
 #include "sha256.hpp"
 #include "config_script.h"
+#include "Gen_QR.h"
 
 
 const char* address = DEFAULT_SERVER_ADDRESS;
@@ -70,7 +71,6 @@ inline char* http_get_ret_path(struct mg_http_message* msg);
 inline char* http_get_ret_path_raw(struct mg_http_message* msg);
 
 
-
 inline void handle_index_html(struct mg_connection* connection, struct mg_http_message* msg);
 
 inline void handle_login_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password);
@@ -92,6 +92,8 @@ inline void handle_mkdir_html(struct mg_connection* connection, struct mg_http_m
 inline void handle_move_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password);
 
 inline void handle_extension_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password);
+
+inline void handle_qr_html(struct mg_connection* connection, struct mg_http_message* msg);
 
 inline void send_error_html(struct mg_connection* connection, int code, const char* color)
 {
@@ -126,6 +128,8 @@ inline void handle_http_message(struct mg_connection* connection, struct mg_http
 		handle_move_html(connection, msg, database_user_password);
 	else if (starts_with(msg->uri.ptr, "/extension/"))
 		handle_extension_html(connection, msg, database_user_password);
+	else if (starts_with(msg->uri.ptr, "/qr/") || starts_with(msg->uri.ptr, "/qr"))
+		handle_qr_html(connection, msg);
 	else send_error_html(connection, 404, "rgba(147, 0, 0, 0.90)");
 }
 
@@ -338,7 +342,7 @@ inline void handle_explorer_html(struct mg_connection* connection, struct mg_htt
 	else
 	{
 		char* curr_url = new char[msg->uri.len * 3]{ };
-		mg_url_encode(msg->uri.ptr, msg->uri.len, curr_url, msg->uri.len * 3 - 1);
+		mg_url_encode(msg->uri.ptr, msg->uri.len, curr_url, msg->uri.len * 3);
 		
 		http_redirect_to(connection, "/?return_to=%s", curr_url);
 		
@@ -409,7 +413,7 @@ inline void handle_deleter_html(struct mg_connection* connection, struct mg_http
 	else
 	{
 		char* curr_url = new char[msg->uri.len * 3]{ };
-		mg_url_encode(msg->uri.ptr, msg->uri.len, curr_url, msg->uri.len * 3 - 1);
+		mg_url_encode(msg->uri.ptr, msg->uri.len, curr_url, msg->uri.len * 3);
 		
 		http_redirect_to(connection, "/?return_to=%s", curr_url);
 		
@@ -506,7 +510,7 @@ inline void handle_uploader_html(struct mg_connection* connection, struct mg_htt
 	else
 	{
 		char* curr_url = new char[msg->uri.len * 3]{ };
-		mg_url_encode(msg->uri.ptr, msg->uri.len, curr_url, msg->uri.len * 3 - 1);
+		mg_url_encode(msg->uri.ptr, msg->uri.len, curr_url, msg->uri.len * 3);
 		
 		http_redirect_to(connection, "/?return_to=%s", curr_url);
 		
@@ -803,6 +807,45 @@ inline void handle_extension_html(struct mg_connection* connection, struct mg_ht
 	delete[] dir;
 }
 
+inline void handle_qr_html(struct mg_connection* connection, struct mg_http_message* msg)
+{
+	char* data = new char[msg->query.len]{ }, bg[8]{ }, fg[8]{ };
+	mg_http_get_var(&msg->query, "data", data, msg->query.len);
+	mg_http_get_var(&msg->query, "bg", bg, 8);
+	mg_http_get_var(&msg->query, "fg", fg, 8);
+	
+	if (*data)
+	{
+		int last = mg_url_decode(data, msg->query.len, data, msg->query.len, 1);
+		data[last] = 0;
+	}
+	
+	
+	std::string bgs, fgs;
+	
+	if (*bg)
+	{
+		int last = mg_url_decode(bg, 8, bg, 8, 1);
+		data[last] = 0;
+		bgs = bg;
+	}
+	else bgs = "#ffffff";
+	
+	if (*fg)
+	{
+		int last = mg_url_decode(fg, 8, fg, 8, 1);
+		data[last] = 0;
+		fgs = fg;
+	}
+	else fgs = "#000000";
+	
+	
+	mg_http_reply(
+			connection, 200, "Content-Type: image/svg+xml;\r\n",
+			To_svg_string(generate_qr_code(data), 0, bgs.c_str(), fgs.c_str()).c_str()
+	);
+}
+
 
 #include "database.cpp"
 #include "templates.hpp"
@@ -1009,7 +1052,7 @@ inline void http_redirect_to(struct mg_connection* connection, const char* url_f
 inline char* http_get_ret_path(struct mg_http_message* msg)
 {
 	char* ret_path = new char[msg->query.len]{ };
-	mg_http_get_var(&msg->query, "return_to", ret_path, msg->query.len - 1);
+	mg_http_get_var(&msg->query, "return_to", ret_path, msg->query.len);
 	
 	if (!*ret_path)
 	{
@@ -1017,7 +1060,7 @@ inline char* http_get_ret_path(struct mg_http_message* msg)
 		return new char[]{ "/explorer/" };
 	}
 	
-	int last = mg_url_decode(ret_path, msg->query.len - 1, ret_path, msg->query.len - 1, 1);
+	int last = mg_url_decode(ret_path, msg->query.len, ret_path, msg->query.len, 1);
 	ret_path[last] = 0;
 	
 	return ret_path;
@@ -1027,7 +1070,7 @@ inline char* http_get_ret_path(struct mg_http_message* msg)
 inline char* http_get_ret_path_raw(struct mg_http_message* msg)
 {
 	char* ret_path = new char[msg->query.len]{ };
-	mg_http_get_var(&msg->query, "return_to", ret_path, msg->query.len - 1);
+	mg_http_get_var(&msg->query, "return_to", ret_path, msg->query.len);
 	
 	if (!*ret_path)
 	{
@@ -1037,7 +1080,7 @@ inline char* http_get_ret_path_raw(struct mg_http_message* msg)
 	
 	size_t ret_path_len = strlen(ret_path);
 	char* ret_path_url = new char[ret_path_len * 3]{ };
-	mg_url_encode(ret_path, ret_path_len, ret_path_url, ret_path_len * 3 - 1);
+	mg_url_encode(ret_path, ret_path_len, ret_path_url, ret_path_len * 3);
 	
 	char* ret_path_raw = new char[msg->query.len + ret_path_len * 2]{ };
 	sprintf(ret_path_raw, "?return_to=%s", ret_path_url);

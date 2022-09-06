@@ -73,6 +73,6 @@ endfunction()
 create_resources("resources.hpp")
 
 
-add_executable(filestorage main.cpp server.h server.cpp constants.hpp config_script.cpp templates.hpp)
+add_executable(filestorage main.cpp server.cpp config_script.cpp lua_config_libfunctions.cpp Gen_QR.cpp)
 
 target_link_libraries(filestorage mariadb mariadbcpp lua pthread)

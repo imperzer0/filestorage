@@ -14,3 +14,7 @@
 /cmake-build-*/
 
 /resources.hpp
+
+# qr code generator library
+/qrcodegen.cpp
+/qrcodegen.hpp

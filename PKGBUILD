@@ -2,7 +2,7 @@
 # Maintained by imper <imperator999mcpe@gmail.com>
 
 pkgname=filestorage
-pkgver=11.0
+pkgver=12.0
 pkgrel=1
 pkgdesc='File storage service server for linux'
 author="imperzer0"
@@ -19,6 +19,8 @@ _libfiles=("CMakeLists.txt" "main.cpp"
 	"constants.hpp" "templates.hpp"
 	"sha256.cpp" "sha256.hpp"
 	"config_script.cpp" "config_script.h"
+	"lua_config_libfunctions.cpp" "lua_config_libfunctions.h"
+	"Gen_QR.cpp" "Gen_QR.h"
 )
 
 _rcfiles=(
@@ -55,6 +57,12 @@ sha256sums=(${sha256sums[@]} "b15cf49575f34072ded00866261106a277f9e29e77e8ee3278
 
 source=(${source[@]} "https://raw.githubusercontent.com/imperzer0/strscan/master/strscan.h")
 sha256sums=(${sha256sums[@]} "f51d8e3e25b2bcef6387e981086ace1dc82584c3f63bb46a27a21483d533a1e7")
+
+source=(${source[@]} "https://raw.githubusercontent.com/nayuki/QR-Code-generator/720f62bddb7226106071d4728c292cb1df519ceb/cpp/qrcodegen.cpp")
+sha256sums=(${sha256sums[@]} "1f3b3fcdac6954c32cf583ccd02ec9b5901f756a38c461acedc70be4a77d3757")
+
+source=(${source[@]} "https://raw.githubusercontent.com/nayuki/QR-Code-generator/720f62bddb7226106071d4728c292cb1df519ceb/cpp/qrcodegen.hpp")
+sha256sums=(${sha256sums[@]} "b779c3b156cf7a57ce789d6fee4fc991ccc2913774d26c909d22bb8f26b2a793")
 
 _package_version=" ("$pkgver"-"$pkgrel")"
 
