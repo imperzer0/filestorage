@@ -2,7 +2,7 @@
 # Maintained by imper <imperator999mcpe@gmail.com>
 
 pkgname=filestorage
-pkgver=12.1
+pkgver=13.0
 pkgrel=1
 pkgdesc='File storage service server for linux'
 author="imperzer0"

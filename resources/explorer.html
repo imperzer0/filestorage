@@ -713,8 +713,6 @@
 <body>
 <div class="filemanager">
     <form method="POST" action="/explorer/%s" style="display: none;" id="forwardform%s">
-        <input type="text" name="login" value="%s"/>
-        <input type="password" name="password" value="%s"/>
     </form>
 
     <div class="breadcrumbs">
@@ -725,24 +723,18 @@
 
 
     <form method="POST" action="/uploader/%s" style="display: none;" id="forwardform-upload%s">
-        <input type="text" name="login" value="%s"/>
-        <input type="password" name="password" value="%s"/>
     </form>
 
     <a class="upload" onclick="document.getElementById('forwardform-upload%s').submit();">+</a>
 
 
     <form method="POST" action="/deleter/%s" style="display: none;" id="forwardform-delete%s">
-        <input type="text" name="login" value="%s"/>
-        <input type="password" name="password" value="%s"/>
     </form>
 
     <a class="delete" onclick="document.getElementById('forwardform-delete%s').submit();">X</a>
 
 
     <form method="POST" action="/explorer/" style="display: none;" id="forwardform-toroot%s">
-        <input type="text" name="login" value="%s"/>
-        <input type="password" name="password" value="%s"/>
     </form>
 
     <a class="toroot" onclick="document.getElementById('forwardform-toroot%s').submit();">R</a>
@@ -842,7 +834,7 @@
         {
             let xhr = new XMLHttpRequest();
             xhr.open('POST', '/explorer/' + to, false);
-            xhr.send('login=%s&password=%s');
+            xhr.send();
             document.open();
             document.write(xhr.responseText);
             document.close();

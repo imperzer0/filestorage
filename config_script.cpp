@@ -162,7 +162,7 @@ extension_response call_lua_extension(const extension_data& data)
 	lua_pushstring(config_script, data.login.c_str());
 	lua_setfield(config_script, -2, "login");
 	
-	lua_pushstring(config_script, data.password.c_str());
+	lua_pushstring(config_script, std::to_string(data.session_cookie).c_str());
 	lua_setfield(config_script, -2, "password");
 	
 	lua_pushstring(config_script, data.name.c_str());

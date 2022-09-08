@@ -23,6 +23,15 @@ int hexdump = 0;
 static struct mg_mgr manager{ };
 static struct mg_connection* server_connection;
 
+struct user_credentials
+{
+	std::string login;
+	std::string password;
+	time_t last_access = 0;
+};
+
+static std::map<uint64_t, user_credentials> session_cookies;
+
 // Handle interrupts, like Ctrl-C
 static int s_signo = 0;
 
@@ -37,22 +46,19 @@ typedef struct
 	char* filename;
 } statistics;
 
-typedef char* (* prepare_function)(const char* path, const char* path_abs, const char* login, const char* password);
+typedef char* (* prepare_function)(const char* path, const char* path_abs);
 
 inline statistics directory_count(const char* dir);
 
-inline char* deleter_file_prepare_html(const char* file, const char* file_abs, const char* login, const char* password);
+inline char* deleter_file_prepare_html(const char* file, const char* file_abs);
 
-inline char* explorer_file_prepare_html(const char* file, const char* file_abs, const char* login, const char* password);
+inline char* explorer_file_prepare_html(const char* file, const char* file_abs);
 
-inline char* deleter_directory_prepare_html(const char* dir, const char* dir_abs, const char* login, const char* password);
+inline char* deleter_directory_prepare_html(const char* dir, const char* dir_abs);
 
-inline char* explorer_directory_prepare_html(const char* dir, const char* dir_abs, const char* login, const char* password);
+inline char* explorer_directory_prepare_html(const char* dir, const char* dir_abs);
 
-inline std::string directory_list_html(
-		const char* dir, const char* dir_abs, const char* login, const char* password,
-		prepare_function prepare_dir, prepare_function prepare_file
-);
+inline std::string directory_list_html(const char* dir, const char* dir_abs, prepare_function prepare_dir, prepare_function prepare_file);
 
 
 inline int starts_with(const char* str, const char* prefix);
@@ -64,11 +70,21 @@ inline const char* path_basename(const char* path);
 inline char* getcwd();
 
 
+inline void http_redirect_to_session(struct mg_connection* connection, uint64_t session_cookie, const char* url_fmt, ...);
+
 inline void http_redirect_to(struct mg_connection* connection, const char* url_fmt, ...);
 
 inline char* http_get_ret_path(struct mg_http_message* msg);
 
-inline char* http_get_ret_path_raw(struct mg_http_message* msg);
+inline char* http_get_ret_path_encoded(struct mg_http_message* msg);
+
+inline uint64_t http_get_session_cookie(mg_http_message* msg);
+
+inline uint64_t session_cookie_generate(const char* login, const char* password);
+
+inline bool session_cookie_is_valid(uint64_t session_cookie);
+
+inline user_credentials session_cookie_get_user_credentials(uint64_t session_cookie);
 
 
 inline void handle_index_html(struct mg_connection* connection, struct mg_http_message* msg);
@@ -94,6 +110,8 @@ inline void handle_move_html(struct mg_connection* connection, struct mg_http_me
 inline void handle_extension_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password);
 
 inline void handle_qr_html(struct mg_connection* connection, struct mg_http_message* msg);
+
+inline void handle_redirect_html(struct mg_connection* connection, struct mg_http_message* msg);
 
 inline void send_error_html(struct mg_connection* connection, int code, const char* color)
 {
@@ -190,7 +208,7 @@ void server_destroy_database(const char* database_user_password) { mariadb_drop_
 
 inline void handle_index_html(struct mg_connection* connection, struct mg_http_message* msg)
 {
-	char* ret_path = http_get_ret_path_raw(msg);
+	char* ret_path = http_get_ret_path_encoded(msg);
 	
 	if (*ret_path)
 		mg_http_reply(connection, 200, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(index_html), ret_path, ret_path);
@@ -206,20 +224,20 @@ inline void handle_login_html(struct mg_connection* connection, struct mg_http_m
 	mg_http_get_var(&msg->body, "login", login, MAX_LOGIN);
 	mg_http_get_var(&msg->body, "password", password, MAX_PASSWORD);
 	
-	
 	auto conn = mariadb_connect_to_db(database_user_password);
 	auto db_password = mariadb_user_get_password(conn.get(), login);
 	if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
 	{
 		char* ret_path = http_get_ret_path(msg);
 		
-		http_redirect_to(connection, ret_path);
+		system((std::string("mkdir -p './") + login + "/'").c_str());
+		http_redirect_to_session(connection, session_cookie_generate(login, password), ret_path);
 		
 		delete[] ret_path;
 	}
 	else
 	{
-		char* ret_path = http_get_ret_path_raw(msg);
+		char* ret_path = http_get_ret_path_encoded(msg);
 		
 		mg_http_reply(
 				connection, 200, "Content-Type: text/html\r\n",
@@ -241,7 +259,7 @@ inline void handle_register_html(struct mg_connection* connection, struct mg_htt
 	auto conn = mariadb_connect_to_db(database_user_password);
 	if (!mariadb_user_insert(conn.get(), login, password))
 	{
-		char* ret_path = http_get_ret_path_raw(msg);
+		char* ret_path = http_get_ret_path_encoded(msg);
 		
 		mg_http_reply(
 				connection, 200, "Content-Type: text/html\r\n",
@@ -257,7 +275,7 @@ inline void handle_register_html(struct mg_connection* connection, struct mg_htt
 		char* ret_path = http_get_ret_path(msg);
 		
 		system((std::string("mkdir -p './") + login + "/'").c_str());
-		http_redirect_to(connection, ret_path);
+		http_redirect_to_session(connection, session_cookie_generate(login, password), ret_path);
 		
 		delete[] ret_path;
 	}
@@ -265,14 +283,12 @@ inline void handle_register_html(struct mg_connection* connection, struct mg_htt
 
 inline void handle_explorer_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
 {
-	char login[MAX_LOGIN]{ }, password[MAX_PASSWORD]{ };
-	mg_http_get_var(&msg->body, "login", login, MAX_LOGIN);
-	mg_http_get_var(&msg->body, "password", password, MAX_PASSWORD);
+	uint64_t session_cookie = http_get_session_cookie(msg);
 	
-	auto conn = mariadb_connect_to_db(database_user_password);
-	auto db_password = mariadb_user_get_password(conn.get(), login);
-	if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
+	if (session_cookie_is_valid(session_cookie))
 	{
+		auto user_credentials = session_cookie_get_user_credentials(session_cookie);
+		
 		char* dir_rel = nullptr;
 		auto dir = new char[msg->uri.len + MAX_LOGIN]{ };
 		
@@ -281,7 +297,7 @@ inline void handle_explorer_html(struct mg_connection* connection, struct mg_htt
 		uri[msg->uri.len] = 0;
 		
 		strscanf(uri, "/explorer/%s", &dir_rel);
-		sprintf(dir, "%s%s", login, dir_rel);
+		sprintf(dir, "%s%s", user_credentials.login.c_str(), dir_rel);
 		
 		delete[] uri;
 		
@@ -323,16 +339,15 @@ inline void handle_explorer_html(struct mg_connection* connection, struct mg_htt
 		
 		mg_http_reply(
 				connection, 200, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(explorer_html),
-				dir_rel_dirname, dir_rel_dirname, login, password,
+				dir_rel_dirname, dir_rel_dirname,
 				dir_rel_dirname, dir_rel_dirname, path_basename(dir_rel),
-				dir_rel, dir_rel, login, password, dir_rel,
-				dir_rel, dir_rel, login, password, dir_rel,
-				dir_rel, login, password, dir_rel,
+				dir_rel, dir_rel, dir_rel,
+				dir_rel, dir_rel, dir_rel,
+				dir_rel, dir_rel,
 				directory_list_html(
-						dir_rel, dir, login, password,
+						dir_rel, dir,
 						explorer_directory_prepare_html, explorer_file_prepare_html
-				).c_str(),
-				login, password
+				).c_str()
 		);
 		
 		delete[] dir_rel_dirname;
@@ -352,14 +367,12 @@ inline void handle_explorer_html(struct mg_connection* connection, struct mg_htt
 
 inline void handle_deleter_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
 {
-	char login[MAX_LOGIN]{ }, password[MAX_PASSWORD]{ };
-	mg_http_get_var(&msg->body, "login", login, MAX_LOGIN);
-	mg_http_get_var(&msg->body, "password", password, MAX_PASSWORD);
+	uint64_t session_cookie = http_get_session_cookie(msg);
 	
-	auto conn = mariadb_connect_to_db(database_user_password);
-	auto db_password = mariadb_user_get_password(conn.get(), login);
-	if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
+	if (session_cookie_is_valid(session_cookie))
 	{
+		auto user_credentials = session_cookie_get_user_credentials(session_cookie);
+		
 		char* dir_rel = nullptr;
 		auto dir = new char[msg->uri.len + MAX_LOGIN]{ };
 		
@@ -368,7 +381,7 @@ inline void handle_deleter_html(struct mg_connection* connection, struct mg_http
 		uri[msg->uri.len] = 0;
 		
 		strscanf(uri, "/deleter/%s", &dir_rel);
-		sprintf(dir, "%s%s", login, dir_rel);
+		sprintf(dir, "%s%s", user_credentials.login.c_str(), dir_rel);
 		
 		delete[] uri;
 		
@@ -399,9 +412,9 @@ inline void handle_deleter_html(struct mg_connection* connection, struct mg_http
 		
 		mg_http_reply(
 				connection, 200, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(deleter_html),
-				dir_rel, dir_rel, dir_rel, login, password, dir_rel,
+				dir_rel, dir_rel, dir_rel, dir_rel,
 				directory_list_html(
-						dir_rel, dir, login, password,
+						dir_rel, dir,
 						deleter_directory_prepare_html, deleter_file_prepare_html
 				).c_str()
 		);
@@ -423,14 +436,12 @@ inline void handle_deleter_html(struct mg_connection* connection, struct mg_http
 
 inline void handle_delete_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
 {
-	char login[MAX_LOGIN]{ }, password[MAX_PASSWORD]{ };
-	mg_http_get_var(&msg->body, "login", login, MAX_LOGIN);
-	mg_http_get_var(&msg->body, "password", password, MAX_PASSWORD);
+	uint64_t session_cookie = http_get_session_cookie(msg);
 	
-	auto conn = mariadb_connect_to_db(database_user_password);
-	auto db_password = mariadb_user_get_password(conn.get(), login);
-	if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
+	if (session_cookie_is_valid(session_cookie))
 	{
+		auto user_credentials = session_cookie_get_user_credentials(session_cookie);
+		
 		char* dir_rel = nullptr;
 		auto dir = new char[msg->uri.len + MAX_LOGIN]{ };
 		
@@ -439,7 +450,7 @@ inline void handle_delete_html(struct mg_connection* connection, struct mg_http_
 		uri[msg->uri.len] = 0;
 		
 		strscanf(uri, "/delete/%s", &dir_rel);
-		sprintf(dir, "%s%s", login, dir_rel);
+		sprintf(dir, "%s%s", user_credentials.login.c_str(), dir_rel);
 		
 		delete[] uri;
 		
@@ -465,14 +476,12 @@ inline void handle_delete_html(struct mg_connection* connection, struct mg_http_
 
 inline void handle_uploader_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
 {
-	char login[MAX_LOGIN]{ }, password[MAX_PASSWORD]{ };
-	mg_http_get_var(&msg->body, "login", login, MAX_LOGIN);
-	mg_http_get_var(&msg->body, "password", password, MAX_PASSWORD);
+	uint64_t session_cookie = http_get_session_cookie(msg);
 	
-	auto conn = mariadb_connect_to_db(database_user_password);
-	auto db_password = mariadb_user_get_password(conn.get(), login);
-	if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
+	if (session_cookie_is_valid(session_cookie))
 	{
+		auto user_credentials = session_cookie_get_user_credentials(session_cookie);
+		
 		char* dir_rel = nullptr;
 		auto dir = new char[msg->uri.len + MAX_LOGIN]{ };
 		
@@ -481,7 +490,7 @@ inline void handle_uploader_html(struct mg_connection* connection, struct mg_htt
 		uri[msg->uri.len] = 0;
 		
 		strscanf(uri, "/uploader/%s", &dir_rel);
-		sprintf(dir, "%s%s", login, dir_rel);
+		sprintf(dir, "%s%s", user_credentials.login.c_str(), dir_rel);
 		
 		delete[] uri;
 		
@@ -500,8 +509,8 @@ inline void handle_uploader_html(struct mg_connection* connection, struct mg_htt
 		
 		mg_http_reply(
 				connection, 200, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(uploader_html),
-				dir_rel, dir_rel, login, password, dir_rel, dir_rel, dir_rel, dir_rel,
-				dir_rel, login, password, dir_rel, login, password, dir_rel, login, password, dir_rel, login, password
+				dir_rel, dir_rel, dir_rel, dir_rel, dir_rel, dir_rel,
+				dir_rel, dir_rel, dir_rel, dir_rel
 		);
 		
 		delete[] dir_rel;
@@ -520,8 +529,10 @@ inline void handle_uploader_html(struct mg_connection* connection, struct mg_htt
 
 inline void handle_upload_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
 {
-	char* login = new char[1]{ }, * password = new char[1]{ }, * filename = new char[1]{ }, * sha = new char[1]{ };
+	char* filename = new char[1]{ }, * sha = new char[1]{ };
 	long long pos = -1;
+	
+	uint64_t session_cookie = http_get_session_cookie(msg);
 	
 	struct mg_http_part form_part{ };
 	size_t ofs = 0;
@@ -532,17 +543,7 @@ inline void handle_upload_html(struct mg_connection* connection, struct mg_http_
 						        form_part.name.len, form_part.name.ptr, form_part.filename.len,
 						        form_part.filename.ptr, form_part.body.len
 		        ));
-		if (!strncmp(form_part.name.ptr, "login", form_part.name.len))
-		{
-			delete[] login;
-			login = strndup(form_part.body.ptr, form_part.body.len);
-		}
-		else if (!strncmp(form_part.name.ptr, "password", form_part.name.len))
-		{
-			delete[] password;
-			password = strndup(form_part.body.ptr, form_part.body.len);
-		}
-		else if (!strncmp(form_part.name.ptr, "start", form_part.name.len))
+		if (!strncmp(form_part.name.ptr, "start", form_part.name.len))
 		{
 			auto tmp = strndup(form_part.body.ptr, form_part.body.len);
 			MG_INFO(("[start] = %s", tmp));
@@ -561,14 +562,12 @@ inline void handle_upload_html(struct mg_connection* connection, struct mg_http_
 		}
 		else if (!strncmp(form_part.name.ptr, "file", form_part.name.len) && *filename && pos >= 0)
 		{
-			auto conn = mariadb_connect_to_db(database_user_password);
-			auto db_password = mariadb_user_get_password(conn.get(), login);
-			if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
+			if (session_cookie_is_valid(session_cookie))
 			{
+				auto user_credentials = session_cookie_get_user_credentials(session_cookie);
+				
 				if (sha256(std::string(form_part.body.ptr, form_part.body.len)) != sha)
 				{
-					delete[] login;
-					delete[] password;
 					delete[] filename;
 					delete[] sha;
 					
@@ -584,7 +583,7 @@ inline void handle_upload_html(struct mg_connection* connection, struct mg_http_
 				uri[msg->uri.len] = 0;
 				
 				strscanf(uri, "/upload/%s", &dir_rel);
-				sprintf(dir, "%s%s", login, dir_rel);
+				sprintf(dir, "%s%s", user_credentials.login.c_str(), dir_rel);
 				
 				delete[] uri;
 				
@@ -596,8 +595,6 @@ inline void handle_upload_html(struct mg_connection* connection, struct mg_http_
 				{
 					delete[] dir;
 					delete[] dir_rel;
-					delete[] login;
-					delete[] password;
 					delete[] filename;
 					delete[] sha;
 					
@@ -622,15 +619,13 @@ inline void handle_upload_html(struct mg_connection* connection, struct mg_http_
 		}
 		else mg_http_reply(connection, 404, "Content-Type: text/plain\r\n", "Invalid");
 	}
-	delete[] login;
-	delete[] password;
 	delete[] filename;
 	delete[] sha;
 }
 
 inline void handle_mkdir_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
 {
-	char* login = new char[1]{ }, * password = new char[1]{ };
+	uint64_t session_cookie = http_get_session_cookie(msg);
 	
 	struct mg_http_part form_part{ };
 	size_t ofs = 0;
@@ -641,22 +636,12 @@ inline void handle_mkdir_html(struct mg_connection* connection, struct mg_http_m
 						        form_part.name.len, form_part.name.ptr, form_part.filename.len,
 						        form_part.filename.ptr, form_part.body.len
 		        ));
-		if (!strncmp(form_part.name.ptr, "login", form_part.name.len))
+		if (!strncmp(form_part.name.ptr, "folder", form_part.name.len))
 		{
-			delete[] login;
-			login = strndup(form_part.body.ptr, form_part.body.len);
-		}
-		else if (!strncmp(form_part.name.ptr, "password", form_part.name.len))
-		{
-			delete[] password;
-			password = strndup(form_part.body.ptr, form_part.body.len);
-		}
-		else if (!strncmp(form_part.name.ptr, "folder", form_part.name.len))
-		{
-			auto conn = mariadb_connect_to_db(database_user_password);
-			auto db_password = mariadb_user_get_password(conn.get(), login);
-			if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
+			if (session_cookie_is_valid(session_cookie))
 			{
+				auto user_credentials = session_cookie_get_user_credentials(session_cookie);
+				
 				char* dir_rel = nullptr;
 				auto dir = new char[msg->uri.len + MAX_LOGIN]{ };
 				
@@ -665,7 +650,7 @@ inline void handle_mkdir_html(struct mg_connection* connection, struct mg_http_m
 				uri[msg->uri.len] = 0;
 				
 				strscanf(uri, "/mkdir/%s", &dir_rel);
-				sprintf(dir, "%s%s", login, dir_rel);
+				sprintf(dir, "%s%s", user_credentials.login.c_str(), dir_rel);
 				
 				delete[] uri;
 				
@@ -677,8 +662,6 @@ inline void handle_mkdir_html(struct mg_connection* connection, struct mg_http_m
 				{
 					delete[] dir;
 					delete[] dir_rel;
-					delete[] login;
-					delete[] password;
 					return;
 				}
 				
@@ -696,13 +679,11 @@ inline void handle_mkdir_html(struct mg_connection* connection, struct mg_http_m
 		}
 		else mg_http_reply(connection, 404, "Content-Type: text/plain\r\n", "Invalid");
 	}
-	delete[] login;
-	delete[] password;
 }
 
 inline void handle_move_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
 {
-	char* login = new char[1]{ }, * password = new char[1]{ };
+	uint64_t session_cookie = http_get_session_cookie(msg);
 	
 	struct mg_http_part form_part{ };
 	size_t ofs = 0;
@@ -713,22 +694,12 @@ inline void handle_move_html(struct mg_connection* connection, struct mg_http_me
 						        form_part.name.len, form_part.name.ptr, form_part.filename.len,
 						        form_part.filename.ptr, form_part.body.len
 		        ));
-		if (!strncmp(form_part.name.ptr, "login", form_part.name.len))
+		if (!strncmp(form_part.name.ptr, "to", form_part.name.len) && *form_part.body.ptr == '/')
 		{
-			delete[] login;
-			login = strndup(form_part.body.ptr, form_part.body.len);
-		}
-		else if (!strncmp(form_part.name.ptr, "password", form_part.name.len))
-		{
-			delete[] password;
-			password = strndup(form_part.body.ptr, form_part.body.len);
-		}
-		else if (!strncmp(form_part.name.ptr, "to", form_part.name.len) && *form_part.body.ptr == '/')
-		{
-			auto conn = mariadb_connect_to_db(database_user_password);
-			auto db_password = mariadb_user_get_password(conn.get(), login);
-			if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
+			if (session_cookie_is_valid(session_cookie))
 			{
+				auto user_credentials = session_cookie_get_user_credentials(session_cookie);
+				
 				char* file_rel = nullptr;
 				auto file = new char[msg->uri.len + MAX_LOGIN]{ };
 				
@@ -737,7 +708,7 @@ inline void handle_move_html(struct mg_connection* connection, struct mg_http_me
 				uri[msg->uri.len] = 0;
 				
 				strscanf(uri, "/move/%s", &file_rel);
-				sprintf(file, "%s%s", login, file_rel);
+				sprintf(file, "%s%s", user_credentials.login.c_str(), file_rel);
 				
 				delete[] uri;
 				
@@ -749,14 +720,12 @@ inline void handle_move_html(struct mg_connection* connection, struct mg_http_me
 				{
 					delete[] file;
 					delete[] file_rel;
-					delete[] login;
-					delete[] password;
 					mg_http_reply(connection, 404, "Content-Type: text/plain\r\n", "Fail");
 					return;
 				}
 				
 				std::string path_to("./");
-				path_to += login;
+				path_to += user_credentials.login;
 				path_to.append(form_part.body.ptr, form_part.body.len);
 				
 				system(("mkdir -p '" + path_to + "'").c_str());
@@ -772,15 +741,11 @@ inline void handle_move_html(struct mg_connection* connection, struct mg_http_me
 		}
 		else mg_http_reply(connection, 404, "Content-Type: text/plain\r\n", "Invalid");
 	}
-	delete[] login;
-	delete[] password;
 }
 
 inline void handle_extension_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
 {
-	char login[MAX_LOGIN]{ }, password[MAX_PASSWORD]{ };
-	mg_http_get_var(&msg->body, "login", login, MAX_LOGIN);
-	mg_http_get_var(&msg->body, "password", password, MAX_PASSWORD);
+	uint64_t session_cookie = http_get_session_cookie(msg);
 	
 	auto conn = mariadb_connect_to_db(database_user_password);
 	if (!conn)
@@ -788,8 +753,8 @@ inline void handle_extension_html(struct mg_connection* connection, struct mg_ht
 		send_error_html(connection, 501, "rgba(147, 120, 0, 0.90)");
 		return;
 	}
-	auto db_password = mariadb_user_get_password(conn.get(), login);
-	bool valid = db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0;
+	
+	auto user_credentials = session_cookie_get_user_credentials(session_cookie);
 	
 	char* uri = new char[msg->uri.len + 1];
 	strncpy(uri, msg->uri.ptr, msg->uri.len);
@@ -799,8 +764,13 @@ inline void handle_extension_html(struct mg_connection* connection, struct mg_ht
 	
 	strscanf(uri, "/extension/%s/%s", &extension, &dir);
 	
+	delete[] uri;
+	
 	init_config_script();
-	auto res = call_lua_extension({ .login = login, .password = password, .name = extension, .argument = dir, .valid = valid });
+	auto res = call_lua_extension(
+			{ .login = user_credentials.login, .session_cookie = session_cookie, .valid = session_cookie_is_valid(session_cookie),
+					.name = extension, .argument = dir }
+	);
 	
 	mg_http_reply(connection, res.response_code, "Content-Type: text/html\r\n", res.page.c_str());
 	
@@ -877,19 +847,19 @@ inline const char* get_filename_ext(const char* filename)
 	return dot + 1;
 }
 
-inline char* explorer_directory_prepare_html(const char* dir, const char* dir_abs, const char* login, const char* password)
+inline char* explorer_directory_prepare_html(const char* dir, const char* dir_abs)
 {
 	statistics st = directory_count(dir_abs);
 	char* html = new char[static_strlen(explorer_dir_html) + 2088];
 	sprintf(
 			html, explorer_dir_html,
-			dir, dir, login, password,
-			dir, dir, dir, login, password, path_basename(dir), st.files, st.folders
+			dir, dir,
+			dir, dir, dir, path_basename(dir), st.files, st.folders
 	);
 	return html;
 }
 
-inline char* explorer_file_prepare_html(const char* file, const char* file_abs, const char* login, const char* password)
+inline char* explorer_file_prepare_html(const char* file, const char* file_abs)
 {
 	struct stat st{ };
 	stat((std::string("./") + file_abs).c_str(), &st);
@@ -897,41 +867,38 @@ inline char* explorer_file_prepare_html(const char* file, const char* file_abs, 
 	auto ext = get_filename_ext(file);
 	sprintf(
 			html, explorer_file_html,
-			file, file, login, password,
-			file, file, file, login, password, ext, ext, path_basename(file), st.st_size
+			file, file,
+			file, file, file, ext, ext, path_basename(file), st.st_size
 	);
 	return html;
 }
 
-inline char* deleter_directory_prepare_html(const char* dir, const char* dir_abs, const char* login, const char* password)
+inline char* deleter_directory_prepare_html(const char* dir, const char* dir_abs)
 {
 	statistics st = directory_count(dir_abs);
-	char* html = new char[static_strlen(explorer_dir_html) + 2088];
+	char* html = new char[static_strlen(deleter_dir_html) + 2088];
 	char* dir_dirname = path_dirname(dir);
-	sprintf(html, deleter_dir_html, dir, dir, login, password, dir_dirname, login, password, path_basename(dir), st.files, st.folders);
+	sprintf(html, deleter_dir_html, dir, dir, dir_dirname, path_basename(dir), st.files, st.folders);
 	delete[] dir_dirname;
 	return html;
 }
 
-inline char* deleter_file_prepare_html(const char* file, const char* file_abs, const char* login, const char* password)
+inline char* deleter_file_prepare_html(const char* file, const char* file_abs)
 {
 	struct stat st{ };
 	stat((std::string("./") + file_abs).c_str(), &st);
-	char* html = new char[static_strlen(explorer_file_html) + 2088];
+	char* html = new char[static_strlen(deleter_file_html) + 2088];
 	auto ext = get_filename_ext(file);
 	char* file_dirname = path_dirname(file);
 	sprintf(
-			html, deleter_file_html, file, file, login, password, file_dirname, login, password, ext, ext, path_basename(file),
+			html, deleter_file_html, file, file, file_dirname, ext, ext, path_basename(file),
 			st.st_size
 	);
 	delete[] file_dirname;
 	return html;
 }
 
-inline std::string directory_list_html(
-		const char* dir, const char* dir_abs, const char* login, const char* password,
-		prepare_function prepare_dir, prepare_function prepare_file
-)
+inline std::string directory_list_html(const char* dir, const char* dir_abs, prepare_function prepare_dir, prepare_function prepare_file)
 {
 	if (directory_count(dir_abs).total <= 0)
 		return explorer_dir_empty_html;
@@ -952,8 +919,7 @@ inline std::string directory_list_html(
 		{
 			auto html = prepare_dir(
 					(std::string(dir) + "/" + entry->d_name).c_str(),
-					(std::string(dir_abs) + "/" + entry->d_name).c_str(),
-					login, password
+					(std::string(dir_abs) + "/" + entry->d_name).c_str()
 			);
 			
 			result += html;
@@ -964,8 +930,7 @@ inline std::string directory_list_html(
 		{
 			auto html = prepare_file(
 					(std::string(dir) + "/" + entry->d_name).c_str(),
-					(std::string(dir_abs) + "/" + entry->d_name).c_str(),
-					login, password
+					(std::string(dir_abs) + "/" + entry->d_name).c_str()
 			);
 			
 			result += html;
@@ -1024,6 +989,23 @@ inline char* getcwd()
 }
 
 
+inline void http_redirect_to_session(struct mg_connection* connection, uint64_t session_cookie, const char* url_fmt, ...)
+{
+	char mem[256], * buf = mem;
+	va_list ap;
+	size_t len;
+	va_start(ap, url_fmt);
+	len = mg_vasprintf(&buf, sizeof(mem), url_fmt, ap);
+	va_end(ap);
+	
+	mg_printf(
+			connection, "HTTP/1.1 307 %s\r\nLocation: %s\r\nSet-Cookie: session=%d\r\nContent-Length: 0\r\n\r\n",
+			mg_http_status_code_str(307), buf, session_cookie
+	);
+	
+	if (buf != mem) free(buf);
+}
+
 inline void http_redirect_to(struct mg_connection* connection, const char* url_fmt, ...)
 {
 	char mem[256], * buf = mem;
@@ -1033,7 +1015,10 @@ inline void http_redirect_to(struct mg_connection* connection, const char* url_f
 	len = mg_vasprintf(&buf, sizeof(mem), url_fmt, ap);
 	va_end(ap);
 	
-	mg_printf(connection, "HTTP/1.1 307 %s\r\nLocation: %s\r\nContent-Length: 0\r\n\r\n", mg_http_status_code_str(307), buf);
+	mg_printf(
+			connection, "HTTP/1.1 307 %s\r\nLocation: %s\r\nContent-Length: 0\r\n\r\n",
+			mg_http_status_code_str(307), buf
+	);
 	
 	if (buf != mem) free(buf);
 }
@@ -1054,10 +1039,10 @@ inline char* http_get_ret_path(struct mg_http_message* msg)
 }
 
 
-inline char* http_get_ret_path_raw(struct mg_http_message* msg)
+inline char* http_get_ret_path_encoded(struct mg_http_message* msg)
 {
-	char* ret_path = new char[msg->query.len]{ };
-	mg_http_get_var(&msg->query, "return_to", ret_path, msg->query.len);
+	char* ret_path = new char[msg->query.len + 1]{ };
+	mg_http_get_var(&msg->query, "return_to", ret_path, msg->query.len + 1);
 	
 	if (!*ret_path)
 	{
@@ -1077,5 +1062,48 @@ inline char* http_get_ret_path_raw(struct mg_http_message* msg)
 	
 	return ret_path_raw;
 }
+
+
+
+inline uint64_t http_get_session_cookie(mg_http_message* msg)
+{
+	auto all_session_cookies = mg_http_get_header(msg, "Cookie");
+	if (all_session_cookies)
+		return strtoull(mg_http_get_header_var(*all_session_cookies, mg_str("session")).ptr, nullptr, 10);
+	else return 0;
+}
+
+
+inline uint64_t session_cookie_generate(const char* login, const char* password)
+{
+	uint64_t session_cookie = 0;
+	for (auto tmp = password; *tmp; ++tmp)
+		session_cookie |= (uint64_t)(*tmp) << 8;
+	session_cookie += time(nullptr);
+	session_cookies[session_cookie] = { .login = login, .password = password, .last_access = time(nullptr) };
+	return session_cookie;
+}
+
+
+inline bool session_cookie_is_valid(uint64_t session_cookie)
+{
+	if (!session_cookies.contains(session_cookie))
+	{
+		session_cookies.erase(session_cookie);
+		return false;
+	}
+	
+	if (time(nullptr) - session_cookies[session_cookie].last_access < 120) // for 2 minutes
+	{
+		session_cookies[session_cookie].last_access = time(nullptr);
+		return true;
+	}
+	
+	return false;
+}
+
+
+inline user_credentials session_cookie_get_user_credentials(uint64_t session_cookie) { return session_cookies[session_cookie]; }
+
 
 #include "sha256.cpp"

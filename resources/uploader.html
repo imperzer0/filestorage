@@ -2743,8 +2743,6 @@
 </head>
 <body>
 <form method="POST" action="/explorer/%s" style="display: none;" id="explorer-forwardform%s">
-    <input type="text" name="login" value="%s"/>
-    <input type="password" name="password" value="%s"/>
 </form>
 <div class="container">
     <div class="switchable" style="display: none;">
@@ -2774,7 +2772,7 @@
         <h1>Create folder in <a class="explorer-link" href="#" onclick="
         document.getElementById('explorer-forwardform%s').submit();">EXPLORER/%s</a></h1>
 
-        <input name="folder" placeholder="Folder name" type="text">
+        <input name="folder" placeholder="Folder name" type="text" onkeyup="trigger_on_return(this)">
         <input id="create_button" onclick="submit_dir_creation(this)" type="submit" value="Create">
         <p class="message">Or maybe you want to <a class="toggle-link" href='#'>upload some files</a></p>
     </div>
@@ -2947,8 +2945,6 @@
 
                     xhr.open('POST', '/upload/%s', false);
 
-                    form_data.append('login', '%s');
-                    form_data.append('password', '%s');
                     form_data.append('name', file.name);
                     form_data.append('sha', hash);
                     form_data.append('start', start);
@@ -2982,7 +2978,7 @@
         function finalize() {
             let xhr = new XMLHttpRequest();
             xhr.open('POST', '/explorer/%s', false);
-            xhr.send('login=%s&password=%s');
+            xhr.send();
             document.open();
             document.write(xhr.responseText);
             document.close();
@@ -3026,23 +3022,31 @@
     });
 </script>
 <script type="text/javascript">
+    function trigger_on_return(e) {
+        if (event.key === 'Enter') {
+            submit_dir_creation(e);
+        }
+    }
+
     function submit_dir_creation(e) {
         {
+            console.log('Requesting directory creation...');
+
             let formdata = new FormData();
             let xhr = new XMLHttpRequest();
             xhr.open('POST', '/mkdir/%s', false);
 
-            formdata.append('login', '%s');
-            formdata.append('password', '%s');
             formdata.append('folder', $('.dir_form input[name=folder]').val());
 
             xhr.send(formdata);
         }
 
         {
+            console.log('Loading directory page...');
+
             let xhr = new XMLHttpRequest();
             xhr.open('POST', '/explorer/%s', false);
-            xhr.send('login=%s&password=%s');
+            xhr.send();
             document.open();
             document.write(xhr.responseText);
             document.close();

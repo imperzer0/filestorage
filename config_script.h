@@ -27,10 +27,10 @@ extern void close_config_script();
 typedef struct
 {
 	std::string login;
-	std::string password;
+	uint64_t session_cookie;
+	bool valid;
 	std::string name;
 	std::string argument;
-	bool valid;
 } extension_data;
 
 extern extension_response call_lua_extension(const extension_data& data);

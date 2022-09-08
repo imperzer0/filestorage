@@ -8,8 +8,6 @@
 
 static constexpr const char* explorer_dir_html = R"(
         <form method="POST" action="/explorer/%s" style="display: none;" id="forwardform%s">
-            <input type="text" name="login" value="%s"/>
-            <input type="password" name="password" value="%s"/>
         </form>
 
         <li class="folders">
@@ -20,8 +18,6 @@ static constexpr const char* explorer_dir_html = R"(
 	            let xhr = new XMLHttpRequest();
 	            xhr.open('POST', '/move/%s', false);
 	
-	            formData.append('login', '%s');
-	            formData.append('password', '%s');
 	            formData.append('to', to);
 	
 	            xhr.send(formData);
@@ -35,8 +31,6 @@ static constexpr const char* explorer_dir_html = R"(
 
 static constexpr const char* explorer_file_html = R"(
         <form method="POST" action="/explorer/%s" style="display: none;" id="forwardform%s" target="_blank">
-            <input type="text" name="login" value="%s"/>
-            <input type="password" name="password" value="%s"/>
         </form>
 
         <li class="files">
@@ -47,8 +41,6 @@ static constexpr const char* explorer_file_html = R"(
                 let xhr = new XMLHttpRequest();
                 xhr.open('POST', '/move/%s', false);
     
-                formData.append('login', '%s');
-                formData.append('password', '%s');
                 formData.append('to', to);
     
                 xhr.send(formData);
@@ -80,13 +72,11 @@ static constexpr const char* deleter_dir_html = R"(
         submit_deletion = ()=>{
             var xhr = new XMLHttpRequest();
             xhr.open('POST', '/delete/%s', true);
-            xhr.send('login=%s&password=%s');
         };
 
         reload_page = ()=>{
             var xhr = new XMLHttpRequest();
             xhr.open('POST', '/deleter/%s');
-            xhr.send('login=%s&password=%s');
             xhr.addEventListener('load', function () {
                 document.open();
                 document.write(this.responseText);
@@ -108,13 +98,11 @@ static constexpr const char* deleter_file_html = R"(
         submit_deletion = ()=>{
             var xhr = new XMLHttpRequest();
             xhr.open('POST', '/delete/%s', true);
-            xhr.send('login=%s&password=%s');
         };
 
         reload_page = ()=>{
             var xhr = new XMLHttpRequest();
             xhr.open('POST', '/deleter/%s');
-            xhr.send('login=%s&password=%s');
             xhr.addEventListener('load', function () {
                 document.open();
                 document.write(this.responseText);
