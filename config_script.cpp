@@ -71,8 +71,8 @@ void* config_initialization_thread_th(void*)
 {
 	while (true)
 	{
-		refresh_config_script();
 		usleep(10'000'000); // every 10 seconds
+		refresh_config_script();
 	}
 }
 
@@ -99,6 +99,8 @@ void init_config_script()
 	mutex_locker locker;
 	
 	close_config_script();
+	
+	MG_INFO(("Initializing lua configuration script context..."));
 	
 	config_script = luaL_newstate();
 	luaL_openlibs(config_script);
@@ -141,6 +143,7 @@ void close_config_script()
 	mutex_locker locker;
 	if (config_script)
 	{
+		MG_INFO(("Closing Lua configuration script context..."));
 		lua_close(config_script);
 		config_script = nullptr;
 	}
@@ -154,7 +157,7 @@ extension_response call_lua_extension(const extension_data& data)
 	
 	lua_getfield(config_script, -1, data.name.c_str());
 	
-	lua_createtable(config_script, 0, 3);
+	lua_createtable(config_script, 0, 4);
 	
 	lua_pushstring(config_script, data.login.c_str());
 	lua_setfield(config_script, -2, "login");
