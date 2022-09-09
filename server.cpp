@@ -46,6 +46,14 @@ typedef struct
 	char* filename;
 } statistics;
 
+typedef struct
+{
+	const char* data;
+	uint64_t len;
+	uint64_t pos;
+} str_buf_fd;
+
+
 typedef char* (* prepare_function)(const char* path, const char* path_abs);
 
 inline statistics directory_count(const char* dir);
@@ -69,7 +77,6 @@ inline const char* path_basename(const char* path);
 
 inline char* getcwd();
 
-
 inline void http_redirect_to_session(struct mg_connection* connection, uint64_t session_cookie, const char* url_fmt, ...);
 
 inline void http_redirect_to(struct mg_connection* connection, const char* url_fmt, ...);
@@ -86,8 +93,12 @@ inline bool session_cookie_is_valid(uint64_t session_cookie);
 
 inline user_credentials session_cookie_get_user_credentials(uint64_t session_cookie);
 
+inline void http_send_resource_file(struct mg_connection* connection, struct mg_http_message* msg, const char* rcdata, size_t rcsize);
+
 
 inline void handle_index_html(struct mg_connection* connection, struct mg_http_message* msg);
+
+inline void handle_favicon_html(struct mg_connection* connection, struct mg_http_message* msg);
 
 inline void handle_login_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password);
 
@@ -111,13 +122,12 @@ inline void handle_extension_html(struct mg_connection* connection, struct mg_ht
 
 inline void handle_qr_html(struct mg_connection* connection, struct mg_http_message* msg);
 
-inline void handle_redirect_html(struct mg_connection* connection, struct mg_http_message* msg);
 
 inline void send_error_html(struct mg_connection* connection, int code, const char* color)
 {
 	mg_http_reply(
 			connection, code, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(error_html),
-			"rgba(147, 0, 0, 0.90)", "rgba(147, 0, 0, 0.90)", "rgba(147, 0, 0, 0.90)", "rgba(147, 0, 0, 0.90)", code
+			color, color, color, color, code, mg_http_status_code_str(code)
 	);
 }
 
@@ -126,6 +136,8 @@ inline void handle_http_message(struct mg_connection* connection, struct mg_http
 {
 	if (mg_http_match_uri(msg, "/") || mg_http_match_uri(msg, "/index.html") || mg_http_match_uri(msg, "/index"))
 		handle_index_html(connection, msg);
+	else if (mg_http_match_uri(msg, "/favicon.ico") || mg_http_match_uri(msg, "/favicon"))
+		handle_favicon_html(connection, msg);
 	else if (mg_http_match_uri(msg, "/login"))
 		handle_login_html(connection, msg, database_user_password);
 	else if (mg_http_match_uri(msg, "/register"))
@@ -173,6 +185,11 @@ void server_initialize(const char* database_user_password)
 	
 	mariadb_create_db(database_user_password);
 	auto connection = mariadb_connect_to_db(database_user_password);
+	if (!connection)
+	{
+		MG_ERROR(("Cannot connect to database using database_user_password. Please check your mariadb configuration and try again."));
+		return;
+	}
 	mariadb_create_table(connection.get());
 	
 	config_initialization_thread();
@@ -218,6 +235,12 @@ inline void handle_index_html(struct mg_connection* connection, struct mg_http_m
 	delete[] ret_path;
 }
 
+
+inline void handle_favicon_html(struct mg_connection* connection, struct mg_http_message* msg)
+{
+	http_send_resource_file(connection, msg, reinterpret_cast<const char*>(favicon_ico), favicon_ico_len);
+}
+
 inline void handle_login_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
 {
 	char login[MAX_LOGIN]{ }, password[MAX_PASSWORD]{ };
@@ -225,6 +248,11 @@ inline void handle_login_html(struct mg_connection* connection, struct mg_http_m
 	mg_http_get_var(&msg->body, "password", password, MAX_PASSWORD);
 	
 	auto conn = mariadb_connect_to_db(database_user_password);
+	if (!conn)
+	{
+		send_error_html(connection, 501, "rgba(147, 120, 0, 0.90)");
+		return;
+	}
 	auto db_password = mariadb_user_get_password(conn.get(), login);
 	if (db_password && !strcmp(db_password, password) && strcmp(db_password, "") != 0)
 	{
@@ -257,6 +285,11 @@ inline void handle_register_html(struct mg_connection* connection, struct mg_htt
 	mg_http_get_var(&msg->body, "password", password, MAX_PASSWORD);
 	
 	auto conn = mariadb_connect_to_db(database_user_password);
+	if (!conn)
+	{
+		send_error_html(connection, 501, "rgba(147, 120, 0, 0.90)");
+		return;
+	}
 	if (!mariadb_user_insert(conn.get(), login, password))
 	{
 		char* ret_path = http_get_ret_path_encoded(msg);
@@ -747,13 +780,6 @@ inline void handle_extension_html(struct mg_connection* connection, struct mg_ht
 {
 	uint64_t session_cookie = http_get_session_cookie(msg);
 	
-	auto conn = mariadb_connect_to_db(database_user_password);
-	if (!conn)
-	{
-		send_error_html(connection, 501, "rgba(147, 120, 0, 0.90)");
-		return;
-	}
-	
 	auto user_credentials = session_cookie_get_user_credentials(session_cookie);
 	
 	char* uri = new char[msg->uri.len + 1];
@@ -1105,5 +1131,99 @@ inline bool session_cookie_is_valid(uint64_t session_cookie)
 
 inline user_credentials session_cookie_get_user_credentials(uint64_t session_cookie) { return session_cookies[session_cookie]; }
 
+
+
+static void restore_http_cb_rp(struct mg_connection* c)
+{
+	delete (str_buf_fd*)c->pfn_data;
+	c->pfn_data = nullptr;
+	c->pfn = http_cb;
+}
+
+static void static_resource_send(struct mg_connection* c, int ev, void* ev_data, void* fn_data)
+{
+	if (ev == MG_EV_WRITE || ev == MG_EV_POLL)
+	{
+		auto rc = (str_buf_fd*)fn_data;
+		// Read to send IO buffer directly, avoid extra on-stack buffer
+		size_t max = MG_IO_SIZE, space, * cl = (size_t*)c->label;
+		if (c->send.size < max)
+			mg_iobuf_resize(&c->send, max);
+		if (c->send.len >= c->send.size)
+			return;  // Rate limit
+		if ((space = c->send.size - c->send.len) > *cl)
+			space = *cl;
+		
+		memcpy(c->send.buf + c->send.len, &rc->data[rc->pos], space);
+		rc->pos += space;
+		c->send.len += space;
+		*cl -= space;
+		if (space == 0)
+			restore_http_cb_rp(c);
+	}
+	else if (ev == MG_EV_CLOSE)
+		restore_http_cb_rp(c);
+}
+
+inline void http_send_resource_file(struct mg_connection* connection, struct mg_http_message* msg, const char* rcdata, size_t rcsize)
+{
+	char etag[64];
+	time_t mtime = 0;
+	struct mg_str* inm = nullptr;
+	
+	if (mg_http_etag(etag, sizeof(etag), rcsize, mtime) != nullptr &&
+	    (inm = mg_http_get_header(msg, "If-None-Match")) != nullptr &&
+	    mg_vcasecmp(inm, etag) == 0)
+	{
+		mg_printf(connection, "HTTP/1.1 304 Not Modified\r\nContent-Length: 0\r\n\r\n");
+	}
+	else
+	{
+		int n, status = 200;
+		char range[100] = "";
+		int64_t r1 = 0, r2 = 0, cl = (int64_t)rcsize;
+		struct mg_str mime = MG_C_STR("image/x-icon");
+		
+		// Handle Range header
+		struct mg_str* rh = mg_http_get_header(msg, "Range");
+		if (rh != nullptr && (n = getrange(rh, &r1, &r2)) > 0 && r1 >= 0 && r2 >= 0)
+		{
+			// If range is specified like "400-", set second limit to content len
+			if (n == 1) r2 = cl - 1;
+			if (r1 > r2 || r2 >= cl)
+			{
+				status = 416;
+				cl = 0;
+				mg_snprintf(range, sizeof(range), "Content-Range: bytes */%lld\r\n", (int64_t)rcsize);
+			}
+			else
+			{
+				status = 206;
+				cl = r2 - r1 + 1;
+				mg_snprintf(range, sizeof(range), "Content-Range: bytes %lld-%lld/%lld\r\n", r1, r1 + cl - 1, (int64_t)rcsize);
+			}
+		}
+		mg_printf(
+				connection,
+				"HTTP/1.1 %d %s\r\n"
+				"Content-Type: %.*s\r\n"
+				"Etag: %s\r\n"
+				"Content-Length: %llu\r\n"
+				"\r\n",
+				status, mg_http_status_code_str(status), (int)mime.len, mime.ptr,
+				etag, cl, range
+		);
+		if (mg_vcasecmp(&msg->method, "HEAD") == 0)
+		{
+			connection->is_draining = 1;
+		}
+		else
+		{
+			connection->pfn = static_resource_send;
+			connection->pfn_data = new str_buf_fd{ .data = rcdata, .len = rcsize, .pos = 0 };
+			*(size_t*)connection->label = (size_t)cl;  // Track to-be-sent content length
+		}
+	}
+}
 
 #include "sha256.cpp"

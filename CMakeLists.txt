@@ -26,6 +26,7 @@ set(resource_files
         "deleter.html"
         "error.html"
         "explorer.html"
+        "favicon.ico"
         "filestorageconf.lua"
         "index.html"
         "invalid_credentials.html"

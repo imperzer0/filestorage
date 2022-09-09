@@ -2,7 +2,7 @@
 # Maintained by imper <imperator999mcpe@gmail.com>
 
 pkgname=filestorage
-pkgver=13.0
+pkgver=13.1
 pkgrel=1
 pkgdesc='File storage service server for linux'
 author="imperzer0"
@@ -28,6 +28,7 @@ _rcfiles=(
 	"resources/deleter.html"
 	"resources/error.html"
 	"resources/explorer.html"
+	"resources/favicon.ico"
 	"resources/filestorageconf.lua"
 	"resources/index.html"
 	"resources/invalid_credentials.html"

@@ -72,11 +72,13 @@ static constexpr const char* deleter_dir_html = R"(
         submit_deletion = ()=>{
             var xhr = new XMLHttpRequest();
             xhr.open('POST', '/delete/%s', true);
+            xhr.send();
         };
 
         reload_page = ()=>{
             var xhr = new XMLHttpRequest();
             xhr.open('POST', '/deleter/%s');
+            xhr.send();
             xhr.addEventListener('load', function () {
                 document.open();
                 document.write(this.responseText);
@@ -98,11 +100,13 @@ static constexpr const char* deleter_file_html = R"(
         submit_deletion = ()=>{
             var xhr = new XMLHttpRequest();
             xhr.open('POST', '/delete/%s', true);
+            xhr.send();
         };
 
         reload_page = ()=>{
             var xhr = new XMLHttpRequest();
             xhr.open('POST', '/deleter/%s');
+            xhr.send();
             xhr.addEventListener('load', function () {
                 document.open();
                 document.write(this.responseText);
