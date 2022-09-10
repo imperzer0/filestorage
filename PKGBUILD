@@ -2,7 +2,7 @@
 # Maintained by imper <imperator999mcpe@gmail.com>
 
 pkgname=filestorage
-pkgver=13.1
+pkgver=13.2
 pkgrel=1
 pkgdesc='File storage service server for linux'
 author="imperzer0"
@@ -47,23 +47,33 @@ for _rcfile in ${_rcfiles[@]}; do
 	sha256sums=(${sha256sums[@]} "SKIP")
 done
 
-source=(${source[@]} "https://raw.githubusercontent.com/cesanta/mongoose/d5993ba27ece4b406c230eca63b76dd5d2c28a2d/mongoose.c")
+external=(${external[@]} "https://raw.githubusercontent.com/cesanta/mongoose/d5993ba27ece4b406c230eca63b76dd5d2c28a2d/mongoose.c")
 sha256sums=(${sha256sums[@]} "a0f97a894547cf98cbfc9b276fc924288658c772cdfe3e6a8d60df91d9cc27f7")
 
-source=(${source[@]} "https://raw.githubusercontent.com/cesanta/mongoose/d5993ba27ece4b406c230eca63b76dd5d2c28a2d/mongoose.h")
+external=(${external[@]} "https://raw.githubusercontent.com/cesanta/mongoose/d5993ba27ece4b406c230eca63b76dd5d2c28a2d/mongoose.h")
 sha256sums=(${sha256sums[@]} "a486f3d5baa0d31c576b24f909ede017331f5b104dc3eac945aceafe40f8fe67")
 
-source=(${source[@]} "https://raw.githubusercontent.com/imperzer0/strscan/master/strscan.c")
+external=(${external[@]} "https://raw.githubusercontent.com/imperzer0/strscan/master/strscan.c")
 sha256sums=(${sha256sums[@]} "b15cf49575f34072ded00866261106a277f9e29e77e8ee3278635cd2273f3939")
 
-source=(${source[@]} "https://raw.githubusercontent.com/imperzer0/strscan/master/strscan.h")
+external=(${external[@]} "https://raw.githubusercontent.com/imperzer0/strscan/master/strscan.h")
 sha256sums=(${sha256sums[@]} "f51d8e3e25b2bcef6387e981086ace1dc82584c3f63bb46a27a21483d533a1e7")
 
-source=(${source[@]} "https://raw.githubusercontent.com/nayuki/QR-Code-generator/720f62bddb7226106071d4728c292cb1df519ceb/cpp/qrcodegen.cpp")
+external=(${external[@]} "https://raw.githubusercontent.com/nayuki/QR-Code-generator/720f62bddb7226106071d4728c292cb1df519ceb/cpp/qrcodegen.cpp")
 sha256sums=(${sha256sums[@]} "1f3b3fcdac6954c32cf583ccd02ec9b5901f756a38c461acedc70be4a77d3757")
 
-source=(${source[@]} "https://raw.githubusercontent.com/nayuki/QR-Code-generator/720f62bddb7226106071d4728c292cb1df519ceb/cpp/qrcodegen.hpp")
+external=(${external[@]} "https://raw.githubusercontent.com/nayuki/QR-Code-generator/720f62bddb7226106071d4728c292cb1df519ceb/cpp/qrcodegen.hpp")
 sha256sums=(${sha256sums[@]} "b779c3b156cf7a57ce789d6fee4fc991ccc2913774d26c909d22bb8f26b2a793")
+
+source=(${source[@]} ${external[@]})
+
+
+notarch_prepare() {
+	# shellcheck disable=SC2068
+	for ex in ${external[@]}; do
+		wget "$ex"
+	done
+}
 
 _package_version=" ("$pkgver"-"$pkgrel")"
 

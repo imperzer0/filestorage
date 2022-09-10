@@ -16,7 +16,7 @@ makepkg -sif
 
 #### Other distributions
 ```bash
-sudo bash -c ". ./PKGBUILD && build && notarch_package"
+sudo bash -c ". ./PKGBUILD && notarch_prepare && build && notarch_package"
 ```
 
 ## Usage

@@ -74,6 +74,10 @@ endfunction()
 create_resources("resources.hpp")
 
 
+message(" [ compiler ]  ${CMAKE_CXX_COMPILER}_${CMAKE_CXX_STANDARD} ${CMAKE_CXX_FLAGS}")
+
+set(CMAKE_VERBOSE_MAKEFILE on)
+
 add_executable(filestorage main.cpp server.cpp config_script.cpp lua_config_libfunctions.cpp Gen_QR.cpp)
 
 target_link_libraries(filestorage mariadb mariadbcpp lua pthread)
