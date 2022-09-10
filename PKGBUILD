@@ -2,7 +2,7 @@
 # Maintained by imper <imperator999mcpe@gmail.com>
 
 pkgname=filestorage
-pkgver=13.2
+pkgver=14.0
 pkgrel=1
 pkgdesc='File storage service server for linux'
 author="imperzer0"
@@ -54,10 +54,10 @@ external=(${external[@]} "https://raw.githubusercontent.com/cesanta/mongoose/d59
 sha256sums=(${sha256sums[@]} "a486f3d5baa0d31c576b24f909ede017331f5b104dc3eac945aceafe40f8fe67")
 
 external=(${external[@]} "https://raw.githubusercontent.com/imperzer0/strscan/master/strscan.c")
-sha256sums=(${sha256sums[@]} "b15cf49575f34072ded00866261106a277f9e29e77e8ee3278635cd2273f3939")
+sha256sums=(${sha256sums[@]} "ec146de96056e2a058bf3d965d93eb3be1c84fc971d572e7c95a98cb6dff9907")
 
 external=(${external[@]} "https://raw.githubusercontent.com/imperzer0/strscan/master/strscan.h")
-sha256sums=(${sha256sums[@]} "f51d8e3e25b2bcef6387e981086ace1dc82584c3f63bb46a27a21483d533a1e7")
+sha256sums=(${sha256sums[@]} "50e97478733949f8a01c4d5178919c5c51a33df0d22c10762339570ba985bf9e")
 
 external=(${external[@]} "https://raw.githubusercontent.com/nayuki/QR-Code-generator/720f62bddb7226106071d4728c292cb1df519ceb/cpp/qrcodegen.cpp")
 sha256sums=(${sha256sums[@]} "1f3b3fcdac6954c32cf583ccd02ec9b5901f756a38c461acedc70be4a77d3757")

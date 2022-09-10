@@ -22,6 +22,8 @@ extern void config_initialization_thread();
 
 extern void init_config_script();
 
+extern void refresh_config_script();
+
 extern void close_config_script();
 
 typedef struct

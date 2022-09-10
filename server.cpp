@@ -185,12 +185,10 @@ void server_initialize(const char* database_user_password)
 	
 	mariadb_create_db(database_user_password);
 	auto connection = mariadb_connect_to_db(database_user_password);
-	if (!connection)
-	{
+	if (connection)
+		mariadb_create_table(connection.get());
+	else
 		MG_ERROR(("Cannot connect to database using database_user_password. Please check your mariadb configuration and try again."));
-		return;
-	}
-	mariadb_create_table(connection.get());
 	
 	config_initialization_thread();
 }
@@ -786,16 +784,16 @@ inline void handle_extension_html(struct mg_connection* connection, struct mg_ht
 	strncpy(uri, msg->uri.ptr, msg->uri.len);
 	uri[msg->uri.len] = 0;
 	
-	char* extension, * dir;
+	char* extension = nullptr, * dir = nullptr;
 	
 	strscanf(uri, "/extension/%s/%s", &extension, &dir);
 	
 	delete[] uri;
 	
-	init_config_script();
+	refresh_config_script();
 	auto res = call_lua_extension(
 			{ .login = user_credentials.login, .session_cookie = session_cookie, .valid = session_cookie_is_valid(session_cookie),
-					.name = extension, .argument = dir }
+					.name = extension, .argument = (dir ? dir : "") }
 	);
 	
 	mg_http_reply(connection, res.response_code, "Content-Type: text/html\r\n", res.page.c_str());

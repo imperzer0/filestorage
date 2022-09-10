@@ -65,8 +65,6 @@ inline static void overwrite_config()
 	#endif
 }
 
-inline static void refresh_config_script();
-
 void* config_initialization_thread_th(void*)
 {
 	while (true)
@@ -122,8 +120,10 @@ void init_config_script()
 	refresh_config_script();
 }
 
-inline static void refresh_config_script()
+void refresh_config_script()
 {
+	mutex_locker locker;
+	
 	#ifndef EXTERNAL_TEST
 	MG_INFO(("Refreshing Lua configuration script context..."));
 	#endif
