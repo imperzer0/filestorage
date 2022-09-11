@@ -328,7 +328,7 @@ inline void handle_explorer_html(struct mg_connection* connection, struct mg_htt
 		uri[msg->uri.len] = 0;
 		
 		strscanf(uri, "/explorer/%s", &dir_rel);
-		sprintf(dir, "%s%s", user_credentials.login.c_str(), dir_rel);
+		sprintf(dir, "%s%s", user_credentials.login.c_str(), (dir_rel ? dir_rel : ""));
 		
 		delete[] uri;
 		
@@ -412,7 +412,7 @@ inline void handle_deleter_html(struct mg_connection* connection, struct mg_http
 		uri[msg->uri.len] = 0;
 		
 		strscanf(uri, "/deleter/%s", &dir_rel);
-		sprintf(dir, "%s%s", user_credentials.login.c_str(), dir_rel);
+		sprintf(dir, "%s%s", user_credentials.login.c_str(), (dir_rel ? dir_rel : ""));
 		
 		delete[] uri;
 		
@@ -481,7 +481,7 @@ inline void handle_delete_html(struct mg_connection* connection, struct mg_http_
 		uri[msg->uri.len] = 0;
 		
 		strscanf(uri, "/delete/%s", &dir_rel);
-		sprintf(dir, "%s%s", user_credentials.login.c_str(), dir_rel);
+		sprintf(dir, "%s%s", user_credentials.login.c_str(), (dir_rel ? dir_rel : ""));
 		
 		delete[] uri;
 		
@@ -521,7 +521,7 @@ inline void handle_uploader_html(struct mg_connection* connection, struct mg_htt
 		uri[msg->uri.len] = 0;
 		
 		strscanf(uri, "/uploader/%s", &dir_rel);
-		sprintf(dir, "%s%s", user_credentials.login.c_str(), dir_rel);
+		sprintf(dir, "%s%s", user_credentials.login.c_str(), (dir_rel ? dir_rel : ""));
 		
 		delete[] uri;
 		
@@ -614,7 +614,7 @@ inline void handle_upload_html(struct mg_connection* connection, struct mg_http_
 				uri[msg->uri.len] = 0;
 				
 				strscanf(uri, "/upload/%s", &dir_rel);
-				sprintf(dir, "%s%s", user_credentials.login.c_str(), dir_rel);
+				sprintf(dir, "%s%s", user_credentials.login.c_str(), (dir_rel ? dir_rel : ""));
 				
 				delete[] uri;
 				
@@ -681,7 +681,7 @@ inline void handle_mkdir_html(struct mg_connection* connection, struct mg_http_m
 				uri[msg->uri.len] = 0;
 				
 				strscanf(uri, "/mkdir/%s", &dir_rel);
-				sprintf(dir, "%s%s", user_credentials.login.c_str(), dir_rel);
+				sprintf(dir, "%s%s", user_credentials.login.c_str(), (dir_rel ? dir_rel : ""));
 				
 				delete[] uri;
 				
@@ -739,7 +739,7 @@ inline void handle_move_html(struct mg_connection* connection, struct mg_http_me
 				uri[msg->uri.len] = 0;
 				
 				strscanf(uri, "/move/%s", &file_rel);
-				sprintf(file, "%s%s", user_credentials.login.c_str(), file_rel);
+				sprintf(file, "%s%s", user_credentials.login.c_str(), (file_rel ? file_rel : ""));
 				
 				delete[] uri;
 				
@@ -942,8 +942,8 @@ inline std::string directory_list_html(const char* dir, const char* dir_abs, pre
 		if (entry->d_type == DT_DIR)
 		{
 			auto html = prepare_dir(
-					(std::string(dir) + "/" + entry->d_name).c_str(),
-					(std::string(dir_abs) + "/" + entry->d_name).c_str()
+					(std::string((dir ? dir : "")) + "/" + entry->d_name).c_str(),
+					(std::string((dir_abs ? dir_abs : "")) + "/" + entry->d_name).c_str()
 			);
 			
 			result += html;
@@ -953,8 +953,8 @@ inline std::string directory_list_html(const char* dir, const char* dir_abs, pre
 		if (entry->d_type == DT_REG)
 		{
 			auto html = prepare_file(
-					(std::string(dir) + "/" + entry->d_name).c_str(),
-					(std::string(dir_abs) + "/" + entry->d_name).c_str()
+					(std::string((dir ? dir : "")) + "/" + entry->d_name).c_str(),
+					(std::string((dir_abs ? dir_abs : "")) + "/" + entry->d_name).c_str()
 			);
 			
 			result += html;
@@ -982,6 +982,7 @@ inline int starts_with(const char* str, const char* prefix)
 
 inline char* path_dirname(const char* path)
 {
+	if (!path) return new char[1]{ };
 	char* accesible_path = ::strdup(path);
 	char* slash = nullptr;
 	for (char* tmp = accesible_path; *tmp; ++tmp)
@@ -995,6 +996,7 @@ inline char* path_dirname(const char* path)
 
 inline const char* path_basename(const char* path)
 {
+	if (!path) return "";
 	const char* slash = nullptr;
 	for (const char* tmp = path; *tmp; ++tmp)
 		if (*tmp == '/')
