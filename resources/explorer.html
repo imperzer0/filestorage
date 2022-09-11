@@ -3178,25 +3178,9 @@
             }
         }
 
-        .filemanager .delete {
-            position: absolute;
-            margin-right: 30px;
-            padding: 9px 12px 0 12px;
-            border-radius: 7px;
-            background-color: rgba(255, 0, 0, 0.4);
-            cursor: pointer;
-            right: 0;
-            font-family: monospace;
-            font-size: 30px;
-            font-weight: bold;
-            color: #ffffff;
-            display: block;
-            text-decoration: none;
-        }
-
         .filemanager .upload {
             position: absolute;
-            margin-right: 100px;
+            margin-right: 30px;
             padding: 9px 12px 0 12px;
             border-radius: 7px;
             background-color: rgba(0, 255, 255, 0.5);
@@ -3212,7 +3196,7 @@
 
         .filemanager .toroot {
             position: absolute;
-            margin-right: 170px;
+            margin-right: 100px;
             padding: 9px 12px 0 12px;
             border-radius: 7px;
             background-color: rgba(255, 255, 255, 0.5);
@@ -3224,6 +3208,10 @@
             color: #ffffff;
             display: block;
             text-decoration: none;
+        }
+
+        .userlogin {
+            color: #bb861e;
         }
     </style>
     <style type="text/css">
@@ -3271,18 +3259,32 @@
         }
 
         #context-menu {
-            position: fixed;
-            width: 50%;
-            margin: 0;
-            padding: 5px;
-            background: #1f3500;
-            border-radius: 5px;
-            z-index: 10000;
             transform: scale(0);
             transform-origin: top left;
         }
 
         #context-menu.visible {
+            transform: scale(1);
+            transition: transform 100ms ease-in-out;
+        }
+
+        #move-to {
+            position: fixed;
+            width: 50%;
+            margin: 0;
+            padding: 5px;
+            background: #1f3500;
+            border-radius: 10px;
+            z-index: 10000;
+            transform: scale(0);
+            transform-origin: top left;
+        }
+
+        #move-to input {
+            border-radius: 10px;
+        }
+
+        #move-to.visible {
             transform: scale(1);
             transition: transform 100ms ease-in-out;
         }
@@ -3299,8 +3301,171 @@
             font-size: 15px;
         }
     </style>
+    <style type="text/css">
+        *,
+        *:after,
+        *:before {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --color-bg-primary: #d0d6df;
+            --color-bg-primary-offset: #f1f3f7;
+            --color-bg-secondary: #fff;
+            --color-text-primary: #3a3c42;
+            --color-text-primary-offset: #898c94;
+            --color-orange: #dc9960;
+            --color-green: #1eb8b1;
+            --color-purple: #657cc4;
+            --color-black: var(--color-text-primary);
+            --color-red: #d92027;
+        }
+
+        .context-menu ol {
+            list-style-type: none;
+        }
+
+        .context-menu ul {
+            list-style-type: none;
+        }
+
+        .context-menu {
+            display: flex;
+            flex-direction: column;
+            background-color: var(--color-bg-secondary);
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(64, 64, 64, 0.15);
+            color: #000;
+            font-size: 14px;
+        }
+
+        .context-menu-list {
+            margin: 0;
+            display: block;
+            width: 100%;
+            padding: 8px;
+            color: #000;
+        }
+
+        .context-menu-list + .context-menu-list {
+            border-top: 1px solid #ddd;
+            color: #000;
+        }
+
+        .context-menu-sub-list {
+            display: none;
+            padding: 8px;
+            background-color: var(--color-bg-secondary);
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(64, 64, 64, 0.15);
+            position: absolute;
+            left: 100%;
+            right: 0;
+            z-index: 100;
+            width: 100%;
+            top: 0;
+            flex-direction: column;
+            color: #000;
+        }
+
+        .context-menu-sub-list:hover {
+            display: flex;
+            color: #000;
+        }
+
+        .context-menu-item {
+            position: relative;
+            color: #000;
+        }
+
+        .context-menu-button {
+            font: inherit;
+            border: 0;
+            padding: 8px 8px;
+            padding-right: 36px;
+            width: 100%;
+            border-radius: 8px;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            position: relative;
+            background-color: var(--color-bg-secondary);
+            color: #000;
+        }
+
+        .context-menu-button:hover {
+            background-color: var(--color-bg-primary-offset);
+            color: #000;
+        }
+
+        .context-menu-button:hover + .context-menu-sub-list {
+            display: flex;
+            color: #000;
+        }
+
+        .context-menu-button:hover svg {
+            stroke: var(--color-text-primary);
+            color: #000;
+        }
+
+        .context-menu-button svg {
+            flex-shrink: 0;
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            stroke: var(--color-text-primary-offset);
+            color: #000;
+        }
+
+        .context-menu-button svg:nth-of-type(2) {
+            margin-right: 0;
+            position: absolute;
+            right: 8px;
+            color: #000;
+        }
+
+        .context-menu-button--delete:hover {
+            color: var(--color-red);
+        }
+
+        .context-menu-button--delete:hover svg:first-of-type {
+            stroke: var(--color-red);
+        }
+
+        .context-menu-button--orange svg:first-of-type {
+            stroke: var(--color-orange);
+        }
+
+        .context-menu-button--green svg:first-of-type {
+            stroke: var(--color-green);
+        }
+
+        .context-menu-button--purple svg:first-of-type {
+            stroke: var(--color-purple);
+        }
+
+        .context-menu-button--black svg:first-of-type {
+            stroke: var(--color-black);
+        }
+
+        .context-menu-button--checked svg:nth-of-type(2) {
+            stroke: var(--color-purple);
+        }
+
+        .container {
+            position: fixed;
+            margin: 0;
+            padding: 5px;
+            border-radius: 5px;
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            color: #000;
+        }
+    </style>
     <script type="text/javascript">
-        let submit_move_item = null;
+        var submit_move_item = null;
+        var submit_delete_item = null;
     </script>
 </head>
 <body>
@@ -3310,7 +3475,7 @@
 
     <div class="breadcrumbs">
         <span class="folderName">
-            <a onclick="document.getElementById('forwardform%s').submit();">HOME/%s/</a>%s
+            <a onclick="document.getElementById('forwardform%s').submit();"><i class="userlogin">%s &gt;</i>HOME/%s/</a>%s
         </span>
     </div>
 
@@ -3321,21 +3486,44 @@
     <a class="upload" onclick="document.getElementById('forwardform-upload%s').submit();">+</a>
 
 
-    <form method="POST" action="/deleter/%s" style="display: none;" id="forwardform-delete%s">
-    </form>
-
-    <a class="delete" onclick="document.getElementById('forwardform-delete%s').submit();">X</a>
-
-
     <form method="POST" action="/explorer/" style="display: none;" id="forwardform-toroot%s">
     </form>
 
     <a class="toroot" onclick="document.getElementById('forwardform-toroot%s').submit();">R</a>
 
 
-    <div id="context-menu">
-        <input name="to" placeholder="Target folder" type="text">
+    <div id="move-to">
+        <input id="move-to-field" name="to" placeholder="Target folder" type="text">
         <input onclick="submit_movement();" type="submit" value="Move">
+    </div>
+
+    <div class="container" id="context-menu">
+        <div class="context-menu">
+            <ol class="context-menu-list">
+                <li class="context-menu-item">
+                    <button class="context-menu-button">Rename</button>
+                </li>
+            </ol>
+            <ol class="context-menu-list">
+                <li class="context-menu-item">
+                    <button class="context-menu-button">Copy Link Address</button>
+                </li>
+                <li class="context-menu-item">
+                    <button class="context-menu-button" id="move-button">Move to</button>
+                </li>
+                <li class="context-menu-item">
+                    <button class="context-menu-button">Copy to</button>
+                </li>
+                <li class="context-menu-item">
+                    <button class="context-menu-button">Download</button>
+                </li>
+            </ol>
+            <ol class="context-menu-list">
+                <li class="context-menu-item">
+                    <button id="delete-button" class="context-menu-button context-menu-button--delete">Delete</button>
+                </li>
+            </ol>
+        </div>
     </div>
 
     %s
@@ -3345,9 +3533,13 @@
 <script type="text/javascript">
     const contextMenu = $("#context-menu");
     const contextMenuNative = document.getElementById("context-menu");
+
+    const moveTo = $("#move-to");
+    const moveToNative = document.getElementById("move-to");
+
     const scope = document.querySelector("html");
 
-    const normalizePozition = (mouseX, mouseY) => {
+    const normalizePozition = (mouseX, mouseY, menuNative) => {
         // ? compute what is the mouse position relative to the container element (scope)
         let {
             left: scopeOffsetX,
@@ -3361,25 +3553,21 @@
         const scopeY = mouseY - scopeOffsetY;
 
         // ? check if the element will go out of bounds
-        const outOfBoundsOnX =
-            scopeX + contextMenuNative.clientWidth > scope.clientWidth;
+        const outOfBoundsOnX = scopeX + menuNative.clientWidth > scope.clientWidth;
 
-        const outOfBoundsOnY =
-            scopeY + contextMenuNative.clientHeight > scope.clientHeight;
+        const outOfBoundsOnY = scopeY + menuNative.clientHeight > scope.clientHeight;
 
         let normalizedX = mouseX;
         let normalizedY = mouseY;
 
         // ? normalize on X
         if (outOfBoundsOnX) {
-            normalizedX =
-                scopeOffsetX + scope.clientWidth - contextMenuNative.clientWidth;
+            normalizedX = scopeOffsetX + scope.clientWidth - menuNative.clientWidth;
         }
 
         // ? normalize on Y
         if (outOfBoundsOnY) {
-            normalizedY =
-                scopeOffsetY + scope.clientHeight - contextMenuNative.clientHeight;
+            normalizedY = scopeOffsetY + scope.clientHeight - menuNative.clientHeight;
         }
 
         return {normalizedX, normalizedY};
@@ -3388,6 +3576,7 @@
     document.addEventListener('keyup', function (event) {
         if (event.key === "Escape") {
             contextMenu.removeClass("visible");
+            moveTo.removeClass("visible");
         }
     });
 
@@ -3396,7 +3585,7 @@
 
         const {clientX: mouseX, clientY: mouseY} = event;
 
-        const {normalizedX, normalizedY} = normalizePozition(mouseX, mouseY);
+        const {normalizedX, normalizedY} = normalizePozition(mouseX, mouseY, contextMenuNative);
 
         contextMenu.removeClass("visible");
 
@@ -3408,30 +3597,57 @@
         });
     });
 
+    document.getElementById("move-button").addEventListener("click", (event) => {
+        event.preventDefault();
+
+        const {clientX: mouseX, clientY: mouseY} = event;
+
+        const {normalizedX, normalizedY} = normalizePozition(mouseX, mouseY, moveToNative);
+
+        moveTo.removeClass("visible");
+
+        moveTo.css("top", `${normalizedY}px`);
+        moveTo.css("left", `${normalizedX}px`);
+
+        setTimeout(() => {
+            moveTo.addClass("visible");
+        });
+    });
+
     scope.addEventListener("click", (e) => {
         if (e.target.offsetParent !== contextMenuNative) {
             contextMenu.removeClass("visible");
         }
+
+        if (e.target.offsetParent !== moveToNative) {
+            moveTo.removeClass("visible");
+        }
     });
 
 
+    document.getElementById("move-to-field").addEventListener("keyup", (event) => {
+        if (event.key === "Enter") {
+            submit_movement();
+        }
+    });
+
     function submit_movement() {
+        moveTo.removeClass("visible");
         if (submit_move_item == null) return;
 
-        let to = $('#context-menu input[name=to]').val();
+        let to = $('#move-to-field').val();
         if (!to.startsWith('/')) to = '/' + to;
         while (to.endsWith('/')) to = to.substring(0, to.length - 1);
 
         submit_move_item(to);
 
-        {
-            let xhr = new XMLHttpRequest();
-            xhr.open('POST', '/explorer/' + to, false);
-            xhr.send();
-            document.open();
-            document.write(xhr.responseText);
-            document.close();
-        }
+        window.location.href = '/explorer/' + encodeURIComponent(to);
     }
+
+
+    document.getElementById("delete-button").addEventListener("click", (event) => {
+        if (submit_delete_item == null) return;
+        submit_delete_item();
+    });
 </script>
 </html>

@@ -23,7 +23,6 @@ endif ()
 
 set(resource_files
         "config_lib.lua"
-        "deleter.html"
         "error.html"
         "explorer.html"
         "favicon.ico"

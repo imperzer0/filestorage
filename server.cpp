@@ -58,11 +58,7 @@ typedef char* (* prepare_function)(const char* path, const char* path_abs);
 
 inline statistics directory_count(const char* dir);
 
-inline char* deleter_file_prepare_html(const char* file, const char* file_abs);
-
 inline char* explorer_file_prepare_html(const char* file, const char* file_abs);
-
-inline char* deleter_directory_prepare_html(const char* dir, const char* dir_abs);
 
 inline char* explorer_directory_prepare_html(const char* dir, const char* dir_abs);
 
@@ -104,21 +100,19 @@ inline void handle_login_html(struct mg_connection* connection, struct mg_http_m
 
 inline void handle_register_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password);
 
-inline void handle_explorer_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password);
+inline void handle_explorer_html(struct mg_connection* connection, struct mg_http_message* msg);
 
-inline void handle_deleter_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password);
+inline void handle_delete_html(struct mg_connection* connection, struct mg_http_message* msg);
 
-inline void handle_delete_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password);
+inline void handle_uploader_html(struct mg_connection* connection, struct mg_http_message* msg);
 
-inline void handle_uploader_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password);
+inline void handle_upload_html(struct mg_connection* connection, struct mg_http_message* msg);
 
-inline void handle_upload_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password);
+inline void handle_mkdir_html(struct mg_connection* connection, struct mg_http_message* msg);
 
-inline void handle_mkdir_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password);
+inline void handle_move_html(struct mg_connection* connection, struct mg_http_message* msg);
 
-inline void handle_move_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password);
-
-inline void handle_extension_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password);
+inline void handle_extension_html(struct mg_connection* connection, struct mg_http_message* msg);
 
 inline void handle_qr_html(struct mg_connection* connection, struct mg_http_message* msg);
 
@@ -143,21 +137,19 @@ inline void handle_http_message(struct mg_connection* connection, struct mg_http
 	else if (mg_http_match_uri(msg, "/register"))
 		handle_register_html(connection, msg, database_user_password);
 	else if (starts_with(msg->uri.ptr, "/explorer/"))
-		handle_explorer_html(connection, msg, database_user_password);
-	else if (starts_with(msg->uri.ptr, "/deleter/"))
-		handle_deleter_html(connection, msg, database_user_password);
+		handle_explorer_html(connection, msg);
 	else if (starts_with(msg->uri.ptr, "/delete/"))
-		handle_delete_html(connection, msg, database_user_password);
+		handle_delete_html(connection, msg);
 	else if (starts_with(msg->uri.ptr, "/uploader/"))
-		handle_uploader_html(connection, msg, database_user_password);
+		handle_uploader_html(connection, msg);
 	else if (starts_with(msg->uri.ptr, "/upload/"))
-		handle_upload_html(connection, msg, database_user_password);
+		handle_upload_html(connection, msg);
 	else if (starts_with(msg->uri.ptr, "/mkdir/"))
-		handle_mkdir_html(connection, msg, database_user_password);
+		handle_mkdir_html(connection, msg);
 	else if (starts_with(msg->uri.ptr, "/move/"))
-		handle_move_html(connection, msg, database_user_password);
+		handle_move_html(connection, msg);
 	else if (starts_with(msg->uri.ptr, "/extension/"))
-		handle_extension_html(connection, msg, database_user_password);
+		handle_extension_html(connection, msg);
 	else if (starts_with(msg->uri.ptr, "/qr/") || starts_with(msg->uri.ptr, "/qr"))
 		handle_qr_html(connection, msg);
 	else send_error_html(connection, 404, "rgba(147, 0, 0, 0.90)");
@@ -312,7 +304,7 @@ inline void handle_register_html(struct mg_connection* connection, struct mg_htt
 	}
 }
 
-inline void handle_explorer_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
+inline void handle_explorer_html(struct mg_connection* connection, struct mg_http_message* msg)
 {
 	uint64_t session_cookie = http_get_session_cookie(msg);
 	
@@ -328,6 +320,8 @@ inline void handle_explorer_html(struct mg_connection* connection, struct mg_htt
 		uri[msg->uri.len] = 0;
 		
 		strscanf(uri, "/explorer/%s", &dir_rel);
+		size_t len = (dir_rel ? strlen(dir_rel) + 1 : 0);
+		mg_url_decode(dir_rel, len, dir_rel, len, 1);
 		sprintf(dir, "%s%s", user_credentials.login.c_str(), (dir_rel ? dir_rel : ""));
 		
 		delete[] uri;
@@ -371,8 +365,7 @@ inline void handle_explorer_html(struct mg_connection* connection, struct mg_htt
 		mg_http_reply(
 				connection, 200, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(explorer_html),
 				dir_rel_dirname, dir_rel_dirname,
-				dir_rel_dirname, dir_rel_dirname, path_basename(dir_rel),
-				dir_rel, dir_rel, dir_rel,
+				dir_rel_dirname, user_credentials.login.c_str(), dir_rel_dirname, path_basename(dir_rel),
 				dir_rel, dir_rel, dir_rel,
 				dir_rel, dir_rel,
 				directory_list_html(
@@ -396,76 +389,7 @@ inline void handle_explorer_html(struct mg_connection* connection, struct mg_htt
 	}
 }
 
-inline void handle_deleter_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
-{
-	uint64_t session_cookie = http_get_session_cookie(msg);
-	
-	if (session_cookie_is_valid(session_cookie))
-	{
-		auto user_credentials = session_cookie_get_user_credentials(session_cookie);
-		
-		char* dir_rel = nullptr;
-		auto dir = new char[msg->uri.len + MAX_LOGIN]{ };
-		
-		char* uri = new char[msg->uri.len + 1];
-		strncpy(uri, msg->uri.ptr, msg->uri.len);
-		uri[msg->uri.len] = 0;
-		
-		strscanf(uri, "/deleter/%s", &dir_rel);
-		sprintf(dir, "%s%s", user_credentials.login.c_str(), (dir_rel ? dir_rel : ""));
-		
-		delete[] uri;
-		
-		std::string path("./");
-		path += dir;
-		
-		struct stat st{ };
-		if (::stat(path.c_str(), &st) < 0)
-		{
-			send_error_html(connection, 404, "rgba(147, 0, 0, 0.90)");
-			
-			delete[] dir;
-			delete[] dir_rel;
-			return;
-		}
-		
-		if (S_ISREG(st.st_mode))
-		{
-			struct mg_http_serve_opts opts{ };
-			mg_http_serve_file(connection, msg, path.c_str(), &opts);
-			
-			delete[] dir;
-			delete[] dir_rel;
-			return;
-		}
-		
-		auto dir_rel_dirname = path_dirname(dir_rel);
-		
-		mg_http_reply(
-				connection, 200, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(deleter_html),
-				dir_rel, dir_rel, dir_rel, dir_rel,
-				directory_list_html(
-						dir_rel, dir,
-						deleter_directory_prepare_html, deleter_file_prepare_html
-				).c_str()
-		);
-		
-		delete[] dir_rel_dirname;
-		delete[] dir_rel;
-		delete[] dir;
-	}
-	else
-	{
-		char* curr_url = new char[msg->uri.len * 3]{ };
-		mg_url_encode(msg->uri.ptr, msg->uri.len, curr_url, msg->uri.len * 3);
-		
-		http_redirect_to(connection, "/?return_to=%s", curr_url);
-		
-		delete[] curr_url;
-	}
-}
-
-inline void handle_delete_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
+inline void handle_delete_html(struct mg_connection* connection, struct mg_http_message* msg)
 {
 	uint64_t session_cookie = http_get_session_cookie(msg);
 	
@@ -481,6 +405,8 @@ inline void handle_delete_html(struct mg_connection* connection, struct mg_http_
 		uri[msg->uri.len] = 0;
 		
 		strscanf(uri, "/delete/%s", &dir_rel);
+		size_t len = (dir_rel ? strlen(dir_rel) + 1 : 0);
+		mg_url_decode(dir_rel, len, dir_rel, len, 1);
 		sprintf(dir, "%s%s", user_credentials.login.c_str(), (dir_rel ? dir_rel : ""));
 		
 		delete[] uri;
@@ -505,7 +431,7 @@ inline void handle_delete_html(struct mg_connection* connection, struct mg_http_
 	}
 }
 
-inline void handle_uploader_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
+inline void handle_uploader_html(struct mg_connection* connection, struct mg_http_message* msg)
 {
 	uint64_t session_cookie = http_get_session_cookie(msg);
 	
@@ -521,6 +447,8 @@ inline void handle_uploader_html(struct mg_connection* connection, struct mg_htt
 		uri[msg->uri.len] = 0;
 		
 		strscanf(uri, "/uploader/%s", &dir_rel);
+		size_t len = (dir_rel ? strlen(dir_rel) + 1 : 0);
+		mg_url_decode(dir_rel, len, dir_rel, len, 1);
 		sprintf(dir, "%s%s", user_credentials.login.c_str(), (dir_rel ? dir_rel : ""));
 		
 		delete[] uri;
@@ -558,7 +486,7 @@ inline void handle_uploader_html(struct mg_connection* connection, struct mg_htt
 	}
 }
 
-inline void handle_upload_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
+inline void handle_upload_html(struct mg_connection* connection, struct mg_http_message* msg)
 {
 	char* filename = new char[1]{ }, * sha = new char[1]{ };
 	long long pos = -1;
@@ -614,6 +542,8 @@ inline void handle_upload_html(struct mg_connection* connection, struct mg_http_
 				uri[msg->uri.len] = 0;
 				
 				strscanf(uri, "/upload/%s", &dir_rel);
+				size_t len = (dir_rel ? strlen(dir_rel) + 1 : 0);
+				mg_url_decode(dir_rel, len, dir_rel, len, 1);
 				sprintf(dir, "%s%s", user_credentials.login.c_str(), (dir_rel ? dir_rel : ""));
 				
 				delete[] uri;
@@ -654,7 +584,7 @@ inline void handle_upload_html(struct mg_connection* connection, struct mg_http_
 	delete[] sha;
 }
 
-inline void handle_mkdir_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
+inline void handle_mkdir_html(struct mg_connection* connection, struct mg_http_message* msg)
 {
 	uint64_t session_cookie = http_get_session_cookie(msg);
 	
@@ -681,6 +611,8 @@ inline void handle_mkdir_html(struct mg_connection* connection, struct mg_http_m
 				uri[msg->uri.len] = 0;
 				
 				strscanf(uri, "/mkdir/%s", &dir_rel);
+				size_t len = (dir_rel ? strlen(dir_rel) + 1 : 0);
+				mg_url_decode(dir_rel, len, dir_rel, len, 1);
 				sprintf(dir, "%s%s", user_credentials.login.c_str(), (dir_rel ? dir_rel : ""));
 				
 				delete[] uri;
@@ -712,7 +644,7 @@ inline void handle_mkdir_html(struct mg_connection* connection, struct mg_http_m
 	}
 }
 
-inline void handle_move_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
+inline void handle_move_html(struct mg_connection* connection, struct mg_http_message* msg)
 {
 	uint64_t session_cookie = http_get_session_cookie(msg);
 	
@@ -725,7 +657,7 @@ inline void handle_move_html(struct mg_connection* connection, struct mg_http_me
 						        form_part.name.len, form_part.name.ptr, form_part.filename.len,
 						        form_part.filename.ptr, form_part.body.len
 		        ));
-		if (!strncmp(form_part.name.ptr, "to", form_part.name.len) && *form_part.body.ptr == '/')
+		if (!strncmp(form_part.name.ptr, "to", form_part.name.len))
 		{
 			if (session_cookie_is_valid(session_cookie))
 			{
@@ -739,6 +671,8 @@ inline void handle_move_html(struct mg_connection* connection, struct mg_http_me
 				uri[msg->uri.len] = 0;
 				
 				strscanf(uri, "/move/%s", &file_rel);
+				size_t file_len = (file_rel ? strlen(file_rel) + 1 : 0);
+				mg_url_decode(file_rel, file_len, file_rel, file_len, 1);
 				sprintf(file, "%s%s", user_credentials.login.c_str(), (file_rel ? file_rel : ""));
 				
 				delete[] uri;
@@ -757,7 +691,10 @@ inline void handle_move_html(struct mg_connection* connection, struct mg_http_me
 				
 				std::string path_to("./");
 				path_to += user_credentials.login;
-				path_to.append(form_part.body.ptr, form_part.body.len);
+				char* tmp = new char[form_part.body.len + 1]{ };
+				mg_url_decode(form_part.body.ptr, form_part.body.len, tmp, form_part.body.len + 1, 1);
+				path_to += tmp;
+				delete[] tmp;
 				
 				system(("mkdir -p '" + path_to + "'").c_str());
 				
@@ -774,7 +711,7 @@ inline void handle_move_html(struct mg_connection* connection, struct mg_http_me
 	}
 }
 
-inline void handle_extension_html(struct mg_connection* connection, struct mg_http_message* msg, const char* database_user_password)
+inline void handle_extension_html(struct mg_connection* connection, struct mg_http_message* msg)
 {
 	uint64_t session_cookie = http_get_session_cookie(msg);
 	
@@ -787,6 +724,8 @@ inline void handle_extension_html(struct mg_connection* connection, struct mg_ht
 	char* extension = nullptr, * dir = nullptr;
 	
 	strscanf(uri, "/extension/%s/%s", &extension, &dir);
+	size_t len = (dir ? strlen(dir) + 1 : 0);
+	mg_url_decode(dir, len, dir, len, 1);
 	
 	delete[] uri;
 	
@@ -878,7 +817,7 @@ inline char* explorer_directory_prepare_html(const char* dir, const char* dir_ab
 	sprintf(
 			html, explorer_dir_html,
 			dir, dir,
-			dir, dir, dir, path_basename(dir), st.files, st.folders
+			dir, dir, dir, dir, path_dirname(dir), path_basename(dir), st.files, st.folders
 	);
 	return html;
 }
@@ -892,33 +831,8 @@ inline char* explorer_file_prepare_html(const char* file, const char* file_abs)
 	sprintf(
 			html, explorer_file_html,
 			file, file,
-			file, file, file, ext, ext, path_basename(file), st.st_size
+			file, file, file, file, path_dirname(file), ext, ext, path_basename(file), st.st_size
 	);
-	return html;
-}
-
-inline char* deleter_directory_prepare_html(const char* dir, const char* dir_abs)
-{
-	statistics st = directory_count(dir_abs);
-	char* html = new char[static_strlen(deleter_dir_html) + 2088];
-	char* dir_dirname = path_dirname(dir);
-	sprintf(html, deleter_dir_html, dir, dir, dir_dirname, path_basename(dir), st.files, st.folders);
-	delete[] dir_dirname;
-	return html;
-}
-
-inline char* deleter_file_prepare_html(const char* file, const char* file_abs)
-{
-	struct stat st{ };
-	stat((std::string("./") + file_abs).c_str(), &st);
-	char* html = new char[static_strlen(deleter_file_html) + 2088];
-	auto ext = get_filename_ext(file);
-	char* file_dirname = path_dirname(file);
-	sprintf(
-			html, deleter_file_html, file, file, file_dirname, ext, ext, path_basename(file),
-			st.st_size
-	);
-	delete[] file_dirname;
 	return html;
 }
 
@@ -1054,6 +968,7 @@ inline char* http_get_ret_path(struct mg_http_message* msg)
 {
 	char* ret_path = new char[msg->query.len]{ };
 	mg_http_get_var(&msg->query, "return_to", ret_path, msg->query.len);
+	mg_url_decode(ret_path, msg->query.len, ret_path, msg->query.len, 1);
 	
 	if (!*ret_path)
 	{

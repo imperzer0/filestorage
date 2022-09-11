@@ -16,11 +16,17 @@ static constexpr const char* explorer_dir_html = R"(
 	        submit_move_item = (to) => {
 	            let formData = new FormData();
 	            let xhr = new XMLHttpRequest();
-	            xhr.open('POST', '/move/%s', false);
+	            xhr.open('POST', '/move/' + encodeURIComponent('%s'), false);
 	
 	            formData.append('to', to);
 	
 	            xhr.send(formData);
+	        };
+	        submit_delete_item = () => {
+	            let xhr = new XMLHttpRequest();
+	            xhr.open('POST', '/delete/' + encodeURIComponent('%s'), false);
+	            xhr.send();
+	            window.location.href = '/explorer/' + encodeURIComponent('%s');
 	        };">
                 <span class="icon folder full"></span>
                 <span class="name">%s</span>
@@ -39,12 +45,18 @@ static constexpr const char* explorer_file_html = R"(
             submit_move_item = (to) => {
                 let formData = new FormData();
                 let xhr = new XMLHttpRequest();
-                xhr.open('POST', '/move/%s', false);
+                xhr.open('POST', '/move/' + encodeURIComponent('%s'), false);
     
                 formData.append('to', to);
     
                 xhr.send(formData);
-            };">
+            };
+	        submit_delete_item = () => {
+	            let xhr = new XMLHttpRequest();
+	            xhr.open('POST', '/delete/' + encodeURIComponent('%s'), false);
+	            xhr.send();
+	            window.location.href = '/explorer/' + encodeURIComponent('%s');
+	        };">
                 <span class="icon file f-%s">.%s</span>
                 <span class="name">%s</span>
                 <span class="details">%zu bytes</span>
@@ -63,63 +75,6 @@ static constexpr const char* explorer_dir_empty_html = R"(
         <div class="nofiles"></div>
         <span>Folder is empty</span>
     </div>
-)";
-
-
-static constexpr const char* deleter_dir_html = R"(
-    <li class="folders">
-        <a title="EXPLORER/%s" class="folders" onclick="
-        submit_deletion = ()=>{
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', '/delete/%s', true);
-            xhr.send();
-        };
-
-        reload_page = ()=>{
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', '/deleter/%s');
-            xhr.send();
-            xhr.addEventListener('load', function () {
-                document.open();
-                document.write(this.responseText);
-                document.close();
-            });
-        };
-
-        JSalert();">
-            <span class="icon folder full"></span>
-            <span class="name">%s</span>
-            <span class="details">%zu files, %zu folders</span>
-        </a>
-    </li>
-)";
-
-static constexpr const char* deleter_file_html = R"(
-        <li class="files">
-            <a title="EXPLORER/%s" class="files"  onclick="
-        submit_deletion = ()=>{
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', '/delete/%s', true);
-            xhr.send();
-        };
-
-        reload_page = ()=>{
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', '/deleter/%s');
-            xhr.send();
-            xhr.addEventListener('load', function () {
-                document.open();
-                document.write(this.responseText);
-                document.close();
-            });
-        };
-
-        JSalert();">
-                <span class="icon file f-%s">.%s</span>
-                <span class="name">%s</span>
-                <span class="details">%zu bytes</span>
-            </a>
-        </li>
 )";
 
 
