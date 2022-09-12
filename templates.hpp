@@ -21,11 +21,14 @@ static constexpr const char* explorer_dir_html = R"(
         formData.append('to', to);
 
         xhr.send(formData);
+        window.location.href = '/explorer/' + encodeURIComponent(dirname(to));
     };
     submit_delete_item = () => {
         let xhr = new XMLHttpRequest();
         xhr.open('POST', '/delete/' + encodeURIComponent('%s'), false);
         xhr.send();
+    };
+    submit_delete_reload = () => {
         window.location.href = '/explorer/' + encodeURIComponent('%s');
     };
     submit_copy_item = (to) => {
@@ -36,7 +39,7 @@ static constexpr const char* explorer_dir_html = R"(
         formData.append('to', to);
 
         xhr.send(formData);
-        window.location.href = '/explorer/' + encodeURIComponent('%s');
+        window.location.href = '/explorer/' + encodeURIComponent(dirname(to));
     };
     submit_download_item = () => {
         window.location.href = '/download/' + encodeURIComponent('%s');
@@ -74,11 +77,14 @@ static constexpr const char* explorer_file_html = R"(
         formData.append('to', to);
 
         xhr.send(formData);
+        window.location.href = '/explorer/' + encodeURIComponent(dirname(to));
     };
     submit_delete_item = () => {
         let xhr = new XMLHttpRequest();
         xhr.open('POST', '/delete/' + encodeURIComponent('%s'), false);
         xhr.send();
+    };
+    submit_delete_reload = () => {
         window.location.href = '/explorer/' + encodeURIComponent('%s');
     };
     submit_copy_item = (to) => {
@@ -89,7 +95,7 @@ static constexpr const char* explorer_file_html = R"(
         formData.append('to', to);
 
         xhr.send(formData);
-        window.location.href = '/explorer/' + encodeURIComponent('%s');
+        window.location.href = '/explorer/' + encodeURIComponent(dirname(to));
     };
     submit_download_item = () => {
         window.location.href = '/download/' + encodeURIComponent('%s');

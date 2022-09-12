@@ -148,8 +148,6 @@ inline void handle_http_message(struct mg_connection* connection, struct mg_http
 		handle_register_html(connection, msg, database_user_password);
 	else if (starts_with(msg->uri.ptr, "/explorer/"))
 		handle_explorer_html(connection, msg);
-	else if (starts_with(msg->uri.ptr, "/delete/"))
-		handle_delete_html(connection, msg);
 	else if (starts_with(msg->uri.ptr, "/uploader/"))
 		handle_uploader_html(connection, msg);
 	else if (starts_with(msg->uri.ptr, "/upload/"))
@@ -162,6 +160,8 @@ inline void handle_http_message(struct mg_connection* connection, struct mg_http
 		handle_copy_html(connection, msg);
 	else if (starts_with(msg->uri.ptr, "/download/"))
 		handle_download_html(connection, msg);
+	else if (starts_with(msg->uri.ptr, "/delete/"))
+		handle_delete_html(connection, msg);
 	else if (starts_with(msg->uri.ptr, "/extension/"))
 		handle_extension_html(connection, msg);
 	else if (starts_with(msg->uri.ptr, "/qr/") || starts_with(msg->uri.ptr, "/qr"))
@@ -711,9 +711,8 @@ inline void handle_move_html(struct mg_connection* connection, struct mg_http_me
 				path_to += tmp;
 				delete[] tmp;
 				
-				system(("mkdir -p '" + path_to + "'").c_str());
-				
-				system(("mv -f '" + path_from + "' '" + path_to + "/'").c_str());
+				system(("mkdir -p '" + std::string(path_dirname(path_to.c_str())) + "'").c_str());
+				system(("mv -f '" + path_from + "' '" + path_to + "'").c_str());
 				
 				mg_http_reply(connection, 200, "Content-Type: text/plain\r\n", "Ok");
 				
@@ -772,7 +771,7 @@ inline void handle_copy_html(struct mg_connection* connection, struct mg_http_me
 				}
 				
 				std::string path_to("./");
-				path_to += path_dirname(file);
+				path_to += user_credentials.login;
 				char* tmp = new char[form_part.body.len + 1]{ };
 				mg_url_decode(form_part.body.ptr, form_part.body.len, tmp, form_part.body.len + 1, 1);
 				path_to += tmp;
@@ -998,7 +997,7 @@ inline char* explorer_directory_prepare_html(const char* dir, const char* dir_ab
 	sprintf(
 			html, explorer_dir_html,
 			dir, dir,
-			dir, dir, dir, dir, dirname, dir, dirname, dir, dir, path_basename(dir), st.files, st.folders
+			dir, dir, dir, dir, dirname, dir, dir, dir, path_basename(dir), st.files, st.folders
 	);
 	delete[] dirname;
 	return html;
@@ -1014,7 +1013,7 @@ inline char* explorer_file_prepare_html(const char* file, const char* file_abs)
 	sprintf(
 			html, explorer_file_html,
 			file, file,
-			file, file, file, file, dirname, file, dirname, file, file, ext, ext, path_basename(file), st.st_size
+			file, file, file, file, dirname, file, file, file, ext, ext, path_basename(file), st.st_size
 	);
 	delete[] dirname;
 	return html;
