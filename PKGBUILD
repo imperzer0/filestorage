@@ -2,15 +2,15 @@
 # Maintained by imper <imperator999mcpe@gmail.com>
 
 pkgname=filestorage
-pkgver=14.3
+pkgver=15.0
 pkgrel=1
 pkgdesc='File storage service server for linux'
 author="imperzer0"
 arch=('any')
 url=https://github.com/$author/$pkgname
 license=('GPL3')
-depends=('openssl' 'gcc' 'mariadb' 'mariadb-connector-cpp-git' 'lua')
-makedepends=('cmake' 'git' 'gcc' 'make' 'mariadb-connector-cpp-git' 'lua')
+depends=('openssl' 'gcc' 'mariadb' 'mariadb-connector-cpp-git' 'lua' 'libzip')
+makedepends=('cmake' 'git' 'gcc' 'make' 'mariadb-connector-cpp-git' 'lua' 'libzip')
 
 _srcprefix="local:/"
 _libfiles=("CMakeLists.txt" "main.cpp"
@@ -21,6 +21,7 @@ _libfiles=("CMakeLists.txt" "main.cpp"
 	"config_script.cpp" "config_script.h"
 	"lua_config_libfunctions.cpp" "lua_config_libfunctions.h"
 	"Gen_QR.cpp" "Gen_QR.h"
+	"zip_dir.cpp" "zip_dir.h"
 )
 
 _rcfiles=(
@@ -65,7 +66,6 @@ external=(${external[@]} "https://raw.githubusercontent.com/nayuki/QR-Code-gener
 sha256sums=(${sha256sums[@]} "b779c3b156cf7a57ce789d6fee4fc991ccc2913774d26c909d22bb8f26b2a793")
 
 source=(${source[@]} ${external[@]})
-
 
 notarch_prepare() {
 	# shellcheck disable=SC2068

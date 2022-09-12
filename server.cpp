@@ -14,6 +14,7 @@
 #include "sha256.hpp"
 #include "config_script.h"
 #include "Gen_QR.h"
+#include "zip_dir.h"
 
 
 const char* address = DEFAULT_SERVER_ADDRESS;
@@ -91,6 +92,9 @@ inline user_credentials session_cookie_get_user_credentials(uint64_t session_coo
 
 inline void http_send_resource_file(struct mg_connection* connection, struct mg_http_message* msg, const char* rcdata, size_t rcsize);
 
+inline void mg_http_serve_tmp_file(
+		struct mg_connection* c, struct mg_http_message* hm, const char* path, const struct mg_http_serve_opts* opts
+);
 
 inline void handle_index_html(struct mg_connection* connection, struct mg_http_message* msg);
 
@@ -111,6 +115,12 @@ inline void handle_upload_html(struct mg_connection* connection, struct mg_http_
 inline void handle_mkdir_html(struct mg_connection* connection, struct mg_http_message* msg);
 
 inline void handle_move_html(struct mg_connection* connection, struct mg_http_message* msg);
+
+inline void handle_copy_html(struct mg_connection* connection, struct mg_http_message* msg);
+
+inline void handle_download_html(struct mg_connection* connection, struct mg_http_message* msg);
+
+inline void handle_rename_html(struct mg_connection* connection, struct mg_http_message* msg);
 
 inline void handle_extension_html(struct mg_connection* connection, struct mg_http_message* msg);
 
@@ -148,6 +158,10 @@ inline void handle_http_message(struct mg_connection* connection, struct mg_http
 		handle_mkdir_html(connection, msg);
 	else if (starts_with(msg->uri.ptr, "/move/"))
 		handle_move_html(connection, msg);
+	else if (starts_with(msg->uri.ptr, "/copy/"))
+		handle_copy_html(connection, msg);
+	else if (starts_with(msg->uri.ptr, "/download/"))
+		handle_download_html(connection, msg);
 	else if (starts_with(msg->uri.ptr, "/extension/"))
 		handle_extension_html(connection, msg);
 	else if (starts_with(msg->uri.ptr, "/qr/") || starts_with(msg->uri.ptr, "/qr"))
@@ -367,6 +381,7 @@ inline void handle_explorer_html(struct mg_connection* connection, struct mg_htt
 				dir_rel_dirname, dir_rel_dirname,
 				dir_rel_dirname, user_credentials.login.c_str(), dir_rel_dirname, path_basename(dir_rel),
 				dir_rel, dir_rel, dir_rel,
+				dir_rel, dir_rel,
 				dir_rel, dir_rel,
 				directory_list_html(
 						dir_rel, dir,
@@ -711,6 +726,171 @@ inline void handle_move_html(struct mg_connection* connection, struct mg_http_me
 	}
 }
 
+inline void handle_copy_html(struct mg_connection* connection, struct mg_http_message* msg)
+{
+	uint64_t session_cookie = http_get_session_cookie(msg);
+	
+	struct mg_http_part form_part{ };
+	size_t ofs = 0;
+	while ((ofs = mg_http_next_multipart(msg->body, ofs, &form_part)) > 0)
+	{
+		MG_INFO((
+				        "Chunk name: [%.*s] filename: [%.*s] length: %lu bytes",
+						        form_part.name.len, form_part.name.ptr, form_part.filename.len,
+						        form_part.filename.ptr, form_part.body.len
+		        ));
+		if (!strncmp(form_part.name.ptr, "to", form_part.name.len))
+		{
+			if (session_cookie_is_valid(session_cookie))
+			{
+				auto user_credentials = session_cookie_get_user_credentials(session_cookie);
+				
+				char* file_rel = nullptr;
+				auto file = new char[msg->uri.len + MAX_LOGIN]{ };
+				
+				char* uri = new char[msg->uri.len + 1];
+				strncpy(uri, msg->uri.ptr, msg->uri.len);
+				uri[msg->uri.len] = 0;
+				
+				strscanf(uri, "/copy/%s", &file_rel);
+				size_t file_len = (file_rel ? strlen(file_rel) + 1 : 0);
+				mg_url_decode(file_rel, file_len, file_rel, file_len, 1);
+				sprintf(file, "%s%s", user_credentials.login.c_str(), (file_rel ? file_rel : ""));
+				
+				delete[] uri;
+				
+				std::string path_from("./");
+				path_from += file;
+				
+				struct stat st{ };
+				if (::stat(path_from.c_str(), &st) < 0)
+				{
+					delete[] file;
+					delete[] file_rel;
+					mg_http_reply(connection, 404, "Content-Type: text/plain\r\n", "Fail");
+					return;
+				}
+				
+				std::string path_to("./");
+				path_to += path_dirname(file);
+				char* tmp = new char[form_part.body.len + 1]{ };
+				mg_url_decode(form_part.body.ptr, form_part.body.len, tmp, form_part.body.len + 1, 1);
+				path_to += tmp;
+				delete[] tmp;
+				
+				system(("mkdir -p '" + std::string(path_dirname(path_to.c_str())) + "'").c_str());
+				system(("cp -rf '" + path_from + "' '" + path_to + "'").c_str());
+				
+				mg_http_reply(connection, 200, "Content-Type: text/plain\r\n", "Ok");
+				
+				delete[] file;
+				delete[] file_rel;
+			}
+			else mg_http_reply(connection, 404, "Content-Type: text/plain\r\n", "Invalid");
+		}
+		else mg_http_reply(connection, 404, "Content-Type: text/plain\r\n", "Invalid");
+	}
+}
+
+inline void handle_download_html(struct mg_connection* connection, struct mg_http_message* msg)
+{
+	uint64_t session_cookie = http_get_session_cookie(msg);
+	
+	if (session_cookie_is_valid(session_cookie))
+	{
+		auto user_credentials = session_cookie_get_user_credentials(session_cookie);
+		
+		char* file_rel = nullptr;
+		auto file = new char[msg->uri.len + MAX_LOGIN]{ };
+		
+		char* uri = new char[msg->uri.len + 1];
+		strncpy(uri, msg->uri.ptr, msg->uri.len);
+		uri[msg->uri.len] = 0;
+		
+		strscanf(uri, "/download/%s", &file_rel);
+		size_t file_len = (file_rel ? strlen(file_rel) + 1 : 0);
+		mg_url_decode(file_rel, file_len, file_rel, file_len, 1);
+		sprintf(file, "%s%s", user_credentials.login.c_str(), (file_rel ? file_rel : ""));
+		
+		delete[] uri;
+		
+		std::string path("./");
+		path += file;
+		
+		struct stat st{ };
+		if (::stat(path.c_str(), &st) < 0)
+		{
+			send_error_html(connection, 404, "rgba(147, 0, 0, 0.90)");
+			
+			delete[] file;
+			delete[] file_rel;
+			return;
+		}
+		
+		if (S_ISREG(st.st_mode))
+		{
+			struct mg_http_serve_opts opts{ };
+			std::string extra_header;
+			extra_header = "Content-Disposition: attachment; filename=\"";
+			extra_header += path_basename(path.c_str());
+			extra_header += "\"\r\n";
+			
+			opts.extra_headers = extra_header.c_str();
+			
+			mg_http_serve_file(connection, msg, path.c_str(), &opts);
+			
+			delete[] file;
+			delete[] file_rel;
+			return;
+		}
+		else if (S_ISDIR(st.st_mode))
+		{
+			std::string basename(path_basename(path.c_str()));
+			struct mg_http_serve_opts opts{ };
+			std::string extra_header;
+			extra_header = "Content-Disposition: attachment; filename=\"";
+			extra_header += basename + ".zip";
+			extra_header += "\"\r\n";
+			
+			opts.extra_headers = extra_header.c_str();
+			
+			while (path.back() == '/') path.pop_back();
+			char* encoded = new char[path.size() * 3]{ };
+			mg_url_encode(path.c_str(), path.size(), encoded, path.size() * 3);
+			auto zipfile = std::string(encoded) + ".zip";
+			delete[] encoded;
+			system(("rm -rf \"" + zipfile + "\"").c_str());
+			zip_directory(path, zipfile);
+			
+			mg_http_serve_tmp_file(connection, msg, zipfile.c_str(), &opts);
+			
+			delete[] file;
+			delete[] file_rel;
+			return;
+		}
+		else
+		{
+			send_error_html(connection, 404, "rgba(147, 0, 0, 0.90)");
+			
+			delete[] file;
+			delete[] file_rel;
+			return;
+		}
+		
+		delete[] file;
+		delete[] file_rel;
+	}
+	else
+	{
+		char* curr_url = new char[msg->uri.len * 3]{ };
+		mg_url_encode(msg->uri.ptr, msg->uri.len, curr_url, msg->uri.len * 3);
+		
+		http_redirect_to(connection, "/?return_to=%s", curr_url);
+		
+		delete[] curr_url;
+	}
+}
+
 inline void handle_extension_html(struct mg_connection* connection, struct mg_http_message* msg)
 {
 	uint64_t session_cookie = http_get_session_cookie(msg);
@@ -814,11 +994,13 @@ inline char* explorer_directory_prepare_html(const char* dir, const char* dir_ab
 {
 	statistics st = directory_count(dir_abs);
 	char* html = new char[static_strlen(explorer_dir_html) + 2088];
+	auto dirname = path_dirname(dir);
 	sprintf(
 			html, explorer_dir_html,
 			dir, dir,
-			dir, dir, dir, dir, path_dirname(dir), path_basename(dir), st.files, st.folders
+			dir, dir, dir, dir, dirname, dir, dirname, dir, dir, path_basename(dir), st.files, st.folders
 	);
+	delete[] dirname;
 	return html;
 }
 
@@ -828,11 +1010,13 @@ inline char* explorer_file_prepare_html(const char* file, const char* file_abs)
 	stat((std::string("./") + file_abs).c_str(), &st);
 	char* html = new char[static_strlen(explorer_file_html) + 2088];
 	auto ext = get_filename_ext(file);
+	auto dirname = path_dirname(file);
 	sprintf(
 			html, explorer_file_html,
 			file, file,
-			file, file, file, file, path_dirname(file), ext, ext, path_basename(file), st.st_size
+			file, file, file, file, dirname, file, dirname, file, file, ext, ext, path_basename(file), st.st_size
 	);
+	delete[] dirname;
 	return html;
 }
 
@@ -1073,11 +1257,12 @@ static void static_resource_send(struct mg_connection* c, int ev, void* ev_data,
 		rc->pos += space;
 		c->send.len += space;
 		*cl -= space;
-		if (space == 0)
-			restore_http_cb_rp(c);
+		if (space == 0) restore_http_cb_rp(c);
 	}
 	else if (ev == MG_EV_CLOSE)
+	{
 		restore_http_cb_rp(c);
+	}
 }
 
 inline void http_send_resource_file(struct mg_connection* connection, struct mg_http_message* msg, const char* rcdata, size_t rcsize)
@@ -1137,6 +1322,129 @@ inline void http_send_resource_file(struct mg_connection* connection, struct mg_
 			connection->pfn = static_resource_send;
 			connection->pfn_data = new str_buf_fd{ .data = rcdata, .len = rcsize, .pos = 0 };
 			*(size_t*)connection->label = (size_t)cl;  // Track to-be-sent content length
+		}
+	}
+}
+
+
+
+struct tmp_fd
+{
+	char* filename;
+	struct mg_fd* fd;
+};
+
+static void restore_http_cb_rp_tmp(struct mg_connection* c)
+{
+	auto fd = (struct tmp_fd*)c->pfn_data;
+	fd->fd->fs->rm(fd->filename);
+	delete[] fd->filename;
+	delete fd;
+	c->pfn_data = nullptr;
+	c->pfn = http_cb;
+}
+
+static void static_tmp_cb(struct mg_connection* c, int ev, void* ev_data, void* fn_data)
+{
+	auto* fd = (struct tmp_fd*)fn_data;
+	if (ev == MG_EV_WRITE || ev == MG_EV_POLL)
+	{
+		// Read to send IO buffer directly, avoid extra on-stack buffer
+		size_t n, max = MG_IO_SIZE, space, * cl = (size_t*)c->label;
+		if (c->send.size < max) mg_iobuf_resize(&c->send, max);
+		if (c->send.len >= c->send.size) return;  // Rate limit
+		if ((space = c->send.size - c->send.len) > *cl) space = *cl;
+		n = fd->fd->fs->rd(fd->fd->fd, c->send.buf + c->send.len, space);
+		c->send.len += n;
+		*cl -= n;
+		if (n == 0) restore_http_cb_rp_tmp(c);
+	}
+	else if (ev == MG_EV_CLOSE)
+	{
+		restore_http_cb_rp_tmp(c);
+	}
+	(void)ev_data;
+}
+
+inline void mg_http_serve_tmp_file(
+		struct mg_connection* c, struct mg_http_message* hm, const char* path, const struct mg_http_serve_opts* opts
+)
+{
+	char etag[64];
+	struct mg_fs* fs = opts->fs == nullptr ? &mg_fs_posix : opts->fs;
+	struct mg_fd* fd = mg_fs_open(fs, path, MG_FS_READ);
+	size_t size = 0;
+	time_t mtime = 0;
+	struct mg_str* inm = nullptr;
+	
+	if (fd == nullptr || fs->st(path, &size, &mtime) == 0)
+	{
+		MG_DEBUG(("404 [%s] %p", path, (void*)fd));
+		mg_http_reply(c, 404, "", "%s", "Not found\n");
+		mg_fs_close(fd);
+		// NOTE: mg_http_etag() call should go first!
+	}
+	else if (mg_http_etag(etag, sizeof(etag), size, mtime) != nullptr &&
+	         (inm = mg_http_get_header(hm, "If-None-Match")) != nullptr &&
+	         mg_vcasecmp(inm, etag) == 0)
+	{
+		mg_fs_close(fd);
+		mg_printf(c, "HTTP/1.1 304 Not Modified\r\nContent-Length: 0\r\n\r\n");
+	}
+	else
+	{
+		int n, status = 200;
+		char range[100] = "";
+		int64_t r1 = 0, r2 = 0, cl = (int64_t)size;
+		struct mg_str mime = guess_content_type(mg_str(path), opts->mime_types);
+		
+		// Handle Range header
+		struct mg_str* rh = mg_http_get_header(hm, "Range");
+		if (rh != nullptr && (n = getrange(rh, &r1, &r2)) > 0 && r1 >= 0 && r2 >= 0)
+		{
+			// If range is specified like "400-", set second limit to content len
+			if (n == 1) r2 = cl - 1;
+			if (r1 > r2 || r2 >= cl)
+			{
+				status = 416;
+				cl = 0;
+				mg_snprintf(
+						range, sizeof(range), "Content-Range: bytes */%lld\r\n",
+						(int64_t)size
+				);
+			}
+			else
+			{
+				status = 206;
+				cl = r2 - r1 + 1;
+				mg_snprintf(
+						range, sizeof(range),
+						"Content-Range: bytes %lld-%lld/%lld\r\n", r1, r1 + cl - 1,
+						(int64_t)size
+				);
+				fs->sk(fd->fd, (size_t)r1);
+			}
+		}
+		mg_printf(
+				c,
+				"HTTP/1.1 %d %s\r\n"
+				"Content-Type: %.*s\r\n"
+				"Etag: %s\r\n"
+				"Content-Length: %llu\r\n"
+				"%s%s\r\n",
+				status, mg_http_status_code_str(status), (int)mime.len, mime.ptr,
+				etag, cl, range, opts->extra_headers ? opts->extra_headers : ""
+		);
+		if (mg_vcasecmp(&hm->method, "HEAD") == 0)
+		{
+			c->is_draining = 1;
+			mg_fs_close(fd);
+		}
+		else
+		{
+			c->pfn = static_tmp_cb;
+			c->pfn_data = new tmp_fd{ .filename=strdup(path), .fd=fd };
+			*(size_t*)c->label = (size_t)cl;  // Track to-be-sent content length
 		}
 	}
 }
