@@ -6693,15 +6693,6 @@
 
     const scope = document.querySelector("html");
 
-    function is_element_rightclicked() {
-        return submit_move_item !== null &&
-            submit_delete_item !== null &&
-            submit_delete_reload !== null &&
-            submit_copy_item !== null &&
-            submit_download_item !== null &&
-            copy_link_item !== null;
-    }
-
     const normalizePozition = (mouseX, mouseY, menuNative) => {
         // ? compute what is the mouse position relative to the container element (scope)
         let {
@@ -6747,8 +6738,6 @@
     scope.addEventListener("contextmenu", (event) => {
         event.preventDefault();
 
-        if (!is_element_rightclicked()) return;
-
         const {clientX: mouseX, clientY: mouseY} = event;
 
         const {normalizedX, normalizedY} = normalizePozition(mouseX, mouseY, contextMenuNative);
@@ -6781,10 +6770,9 @@
     });
 
     scope.addEventListener("click", (e) => {
-        contextMenu.removeClass("visible");
-
-        submit_download_item = null;
-        copy_link_item = null;
+        if (e.target.offsetParent !== contextMenuNative) {
+            contextMenu.removeClass("visible");
+        }
 
         if (e.target.offsetParent !== moveToNative) {
             moveTo.removeClass("visible");
