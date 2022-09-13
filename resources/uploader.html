@@ -4152,7 +4152,7 @@
         }
 
         body {
-            background-color: #222;
+            background-color: #212000;
         }
 
         input[type=file] {
@@ -4165,20 +4165,20 @@
         input[type=submit] {
             position: relative;
             padding: 1rem 3rem;
-            background: #0caffa;
+            background: #afa600;
             display: inline-block;
             text-align: center;
             overflow: hidden;
             border-radius: 10px;
             border: 0;
-            color: #113;
+            color: #18310c;
             font-size: 20px;
             font-weight: 600;
         }
 
         input[type=submit]:hover {
-            background: #0b7fc2;
-            color: #333;
+            background: #d5cc00;
+            color: #000000;
             cursor: pointer;
             transition: 0.2s all;
         }
@@ -4186,7 +4186,7 @@
         label {
             position: relative;
             padding: 1rem 3rem;
-            background: #000;
+            background: #004264;
             display: inline-block;
             text-align: center;
             overflow: hidden;
@@ -4195,8 +4195,8 @@
         }
 
         label:hover {
-            background: #0c8fda;
-            color: #333;
+            background: #115d00;
+            color: #2a2f16;
             cursor: pointer;
             transition: 0.2s all;
         }
@@ -4231,7 +4231,7 @@
 
         div.files h2 {
             margin: 0 0 10px 0;
-            color: #888;
+            color: #858585;
         }
 
         div.container {
@@ -4239,12 +4239,16 @@
             padding: 0 30%;
         }
 
-        span.file-size {
-            color: #999;
+        li.file-container {
+            color: #c7d292;
             padding-left: 0.5rem;
         }
-    </style>
-    <style type="text/css">
+
+        span.file-size {
+            color: #815b5b;
+            padding-left: 0.5rem;
+        }
+
         .progress {
             width: 100%;
             height: 15px;
@@ -4263,8 +4267,7 @@
             position: absolute;
             top: 0;
         }
-    </style>
-    <style type="text/css">
+
         input {
             font-family: "Inconsolata", monospace;
             outline: 0;
@@ -4278,11 +4281,11 @@
         }
 
         .explorer-link {
-            color: #b3436c;
+            color: #861b1b;
         }
 
         .explorer-link:hover {
-            color: #83304c;
+            color: #980044;
         }
 
         .toggle-link {
@@ -4291,6 +4294,10 @@
 
         .toggle-link:hover {
             color: #13701c;
+        }
+
+        i.md-48:hover {
+            color: #e04848;
         }
     </style>
 
@@ -7008,7 +7015,7 @@
                 size = Math.round(size / 1024000 * 100) / 100;
             }
 
-            return `<li key="${index}">${file.name} <span class="file-size">${size} ${suffix}</span><i class="material-icons md-48">delete</i></li>`;
+            return `<li key="${index}" class="file-container">${file.name} <span class="file-size">${size} ${suffix}</span><i class="material-icons md-48">delete</i></li>`;
         });
         $("ul").html(fileMap);
     }

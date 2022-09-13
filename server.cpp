@@ -997,7 +997,7 @@ inline char* explorer_directory_prepare_html(const char* dir, const char* dir_ab
 	sprintf(
 			html, explorer_dir_html,
 			dir, dir,
-			dir, dir, dir, dir, dirname, dir, dir, dir, path_basename(dir), st.files, st.folders
+			dir, dir, dir, dir, dirname, dir, dir, dir, path_basename(dir), path_basename(dir), st.files, st.folders
 	);
 	delete[] dirname;
 	return html;
@@ -1013,7 +1013,7 @@ inline char* explorer_file_prepare_html(const char* file, const char* file_abs)
 	sprintf(
 			html, explorer_file_html,
 			file, file,
-			file, file, file, file, dirname, file, file, file, ext, ext, path_basename(file), st.st_size
+			file, file, file, file, dirname, file, file, file, path_basename(file), ext, ext, path_basename(file), st.st_size
 	);
 	delete[] dirname;
 	return html;

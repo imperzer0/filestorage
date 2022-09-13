@@ -54,6 +54,17 @@ static constexpr const char* explorer_dir_html = R"(
         }, function (err) {
             console.error('Async: Could not copy text: ', err);
         });
+    };
+    copy_name_item = () => {
+        console.log('Copying text to clipboard...');
+        navigator.clipboard.writeText('%s').then(function () {
+            Toastify({
+                text: 'Copied URL to clipboard',
+                duration: 1000
+            }).showToast();
+        }, function (err) {
+            console.error('Async: Could not copy text: ', err);
+        });
     };">
                 <span class="icon folder full"></span>
                 <span class="name">%s</span>
@@ -103,6 +114,17 @@ static constexpr const char* explorer_file_html = R"(
     copy_link_item = () => {
         console.log('Copying text to clipboard...');
         navigator.clipboard.writeText(location.protocol + '//' + location.host + '/explorer/' + encodeURIComponent('%s')).then(function () {
+            Toastify({
+                text: 'Copied URL to clipboard',
+                duration: 1000
+            }).showToast();
+        }, function (err) {
+            console.error('Async: Could not copy text: ', err);
+        });
+    };
+    copy_name_item = () => {
+        console.log('Copying text to clipboard...');
+        navigator.clipboard.writeText('%s').then(function () {
             Toastify({
                 text: 'Copied URL to clipboard',
                 duration: 1000

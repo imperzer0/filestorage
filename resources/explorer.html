@@ -4483,7 +4483,7 @@
         -------------------------*/
 
         body {
-            background-color: #2c482e;
+            background-color: #382800;
             z-index: -4;
         }
 
@@ -4574,7 +4574,7 @@
 
         .filemanager .data li {
             border-radius: 3px;
-            background-color: #4a7da5;
+            background-color: #775c31;
             width: 307px;
             height: 118px;
             list-style-type: none;
@@ -4590,7 +4590,7 @@
         }
 
         .filemanager .data li:hover {
-            background-color: #42424e;
+            background-color: #7c7b58;
 
         }
 
@@ -6576,6 +6576,7 @@
         var submit_copy_item = null;
         var submit_download_item = null;
         var copy_link_item = null;
+        var copy_name_item = null;
 
         function basename(path) {
             return path.replace(/.*\//, '');
@@ -6587,7 +6588,7 @@
             return tmp;
         }
 
-        function SweetAlert() {
+        function DeleteionAlert() {
             swal({
                     title: "This item will be deleted permanently!",
                     text: "Are you sure to proceed?",
@@ -6614,6 +6615,15 @@
                         );
                     }
                 });
+        }
+
+        function is_element_rightclicked() {
+            return submit_move_item !== null &&
+                submit_delete_item !== null &&
+                submit_delete_reload !== null &&
+                submit_copy_item !== null &&
+                submit_download_item !== null &&
+                copy_link_item !== null;
         }
     </script>
 </head>
@@ -6654,6 +6664,9 @@
     <div class="container" id="context-menu">
         <div class="context-menu">
             <ol class="context-menu-list">
+                <li class="context-menu-item">
+                    <button class="context-menu-button" id="copy-name-button">Copy Name</button>
+                </li>
                 <li class="context-menu-item">
                     <button class="context-menu-button" id="copy-link-button">Copy Link Address</button>
                 </li>
@@ -6738,6 +6751,8 @@
     scope.addEventListener("contextmenu", (event) => {
         event.preventDefault();
 
+        if (!is_element_rightclicked()) return;
+
         const {clientX: mouseX, clientY: mouseY} = event;
 
         const {normalizedX, normalizedY} = normalizePozition(mouseX, mouseY, contextMenuNative);
@@ -6770,15 +6785,18 @@
     });
 
     scope.addEventListener("click", (e) => {
-        if (e.target.offsetParent !== contextMenuNative) {
-            contextMenu.removeClass("visible");
+        contextMenu.removeClass("visible");
+
+        if (!contextMenuNative.contains(e.target.offsetParent)) {
+            submit_download_item = null;
+            copy_link_item = null;
         }
 
-        if (e.target.offsetParent !== moveToNative) {
+        if (!moveToNative.contains(e.target.offsetParent)) {
             moveTo.removeClass("visible");
         }
 
-        if (e.target.offsetParent !== copyToNative) {
+        if (!copyToNative.contains(e.target.offsetParent)) {
             copyTo.removeClass("visible");
         }
     });
@@ -6797,15 +6815,12 @@
         let to = $('#move-to-field').val();
         if (!to.startsWith('/')) to = '/' + to;
         while (to.endsWith('/')) to = to.substring(0, to.length - 1);
-
         submit_move_item(to);
-
-        window.location.href = '/explorer/' + encodeURIComponent(to);
     }
 
 
     document.getElementById("delete-button").addEventListener("click", (event) => {
-        SweetAlert();
+        DeleteionAlert();
     });
 
 
@@ -6847,12 +6862,21 @@
     document.getElementById("download-button").addEventListener("click", (event) => {
         if (submit_download_item == null) return;
         submit_download_item();
+        submit_download_item = null;
     });
 
 
     document.getElementById("copy-link-button").addEventListener("click", (event) => {
         if (copy_link_item == null) return;
         copy_link_item();
+        copy_link_item = null;
+    });
+
+
+    document.getElementById("copy-name-button").addEventListener("click", (event) => {
+        if (copy_name_item == null) return;
+        copy_name_item();
+        copy_name_item = null;
     });
 </script>
 </html>
