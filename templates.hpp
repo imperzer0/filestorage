@@ -6,12 +6,9 @@
 #define FILESTORAGE_TEMPLATES_HPP
 
 
-static constexpr const char* explorer_dir_html = R"(
-        <form method="POST" action="/explorer/%s" style="display: none;" id="forwardform%s">
-        </form>
-
+static constexpr const char* explorer_dir_html = R"===(
         <li class="folders">
-            <a title="EXPLORER/%s" class="folders" onclick="document.getElementById('forwardform%s').submit();"
+            <a title="EXPLORER/%s" class="folders" onclick="window.location.href = '/explorer/' + encodeURIComponent('%s')"
                oncontextmenu="
     submit_move_item = (to) => {
         let formData = new FormData();
@@ -71,14 +68,11 @@ static constexpr const char* explorer_dir_html = R"(
                 <span class="details">%zu files, %zu folders</span>
             </a>
         </li>
-)";
+)===";
 
-static constexpr const char* explorer_file_html = R"(
-        <form method="POST" action="/explorer/%s" style="display: none;" id="forwardform%s" target="_blank">
-        </form>
-
+static constexpr const char* explorer_file_html = R"===(
         <li class="files">
-            <a title="EXPLORER/%s" class="files" onclick="document.getElementById('forwardform%s').submit();"
+            <a title="EXPLORER/%s" class="files" onclick="window.location.href = '/explorer/' + encodeURIComponent('%s')"
                oncontextmenu="
     submit_move_item = (to) => {
         let formData = new FormData();
@@ -138,20 +132,20 @@ static constexpr const char* explorer_file_html = R"(
                 <span class="details">%zu bytes</span>
             </a>
         </li>
-)";
+)===";
 
-static constexpr const char* explorer_dir_content_html = R"(
+static constexpr const char* explorer_dir_content_html = R"===(
     <ul class="data animated" style="">
     %s
     </ul>
-)";
+)===";
 
-static constexpr const char* explorer_dir_empty_html = R"(
+static constexpr const char* explorer_dir_empty_html = R"===(
     <div class="nothingfound" style="display: block;">
         <div class="nofiles"></div>
         <span>Folder is empty</span>
     </div>
-)";
+)===";
 
 
 #endif //FILESTORAGE_TEMPLATES_HPP

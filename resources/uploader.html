@@ -6877,12 +6877,10 @@
     </script>
 </head>
 <body>
-<form method="POST" action="/explorer/%s" style="display: none;" id="explorer-forwardform%s">
-</form>
 <div class="container">
     <div class="switchable" style="display: none;">
         <h1>Upload Files into <a class="explorer-link" href="#" onclick="
-        document.getElementById('explorer-forwardform%s').submit();">EXPLORER/%s</a></h1>
+        window.location.href = '/explorer/' + encodeURIComponent('%s')">EXPLORER/%s</a></h1>
 
         <div>
             <label for="upload">
@@ -6905,7 +6903,7 @@
     </div>
     <div class="switchable dir_form">
         <h1>Create folder in <a class="explorer-link" href="#" onclick="
-        document.getElementById('explorer-forwardform%s').submit();">EXPLORER/%s</a></h1>
+        window.location.href = '/explorer/' + encodeURIComponent('%s')">EXPLORER/%s</a></h1>
 
         <input name="folder" placeholder="Folder name" type="text" onkeyup="trigger_on_return(this)">
         <input id="create_button" onclick="submit_dir_creation(this)" type="submit" value="Create">
@@ -7111,12 +7109,7 @@
         }
 
         function finalize() {
-            let xhr = new XMLHttpRequest();
-            xhr.open('POST', '/explorer/%s', false);
-            xhr.send();
-            document.open();
-            document.write(xhr.responseText);
-            document.close();
+            window.location.href = '/explorer/' + encodeURIComponent('%s');
         }
 
         function arrayBufferToWordArray(ab) {
@@ -7176,16 +7169,7 @@
             xhr.send(formdata);
         }
 
-        {
-            console.log('Loading directory page...');
-
-            let xhr = new XMLHttpRequest();
-            xhr.open('POST', '/explorer/%s', false);
-            xhr.send();
-            document.open();
-            document.write(xhr.responseText);
-            document.close();
-        }
+        window.location.href = '/explorer/' + encodeURIComponent('%s');
     }
 </script>
 </html>

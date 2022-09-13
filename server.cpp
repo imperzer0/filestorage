@@ -378,10 +378,8 @@ inline void handle_explorer_html(struct mg_connection* connection, struct mg_htt
 		
 		mg_http_reply(
 				connection, 200, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(explorer_html),
-				dir_rel_dirname, dir_rel_dirname,
 				dir_rel_dirname, user_credentials.login.c_str(), dir_rel_dirname, path_basename(dir_rel),
-				dir_rel, dir_rel, dir_rel,
-				dir_rel, dir_rel,
+				dir_rel,
 				dir_rel, dir_rel,
 				directory_list_html(
 						dir_rel, dir,
@@ -483,7 +481,7 @@ inline void handle_uploader_html(struct mg_connection* connection, struct mg_htt
 		
 		mg_http_reply(
 				connection, 200, "Content-Type: text/html\r\n", reinterpret_cast<const char*>(uploader_html),
-				dir_rel, dir_rel, dir_rel, dir_rel, dir_rel, dir_rel,
+				dir_rel, dir_rel, dir_rel, dir_rel,
 				dir_rel, dir_rel, dir_rel, dir_rel
 		);
 		
@@ -996,7 +994,6 @@ inline char* explorer_directory_prepare_html(const char* dir, const char* dir_ab
 	auto dirname = path_dirname(dir);
 	sprintf(
 			html, explorer_dir_html,
-			dir, dir,
 			dir, dir, dir, dir, dirname, dir, dir, dir, path_basename(dir), path_basename(dir), st.files, st.folders
 	);
 	delete[] dirname;
@@ -1012,7 +1009,6 @@ inline char* explorer_file_prepare_html(const char* file, const char* file_abs)
 	auto dirname = path_dirname(file);
 	sprintf(
 			html, explorer_file_html,
-			file, file,
 			file, file, file, file, dirname, file, file, file, path_basename(file), ext, ext, path_basename(file), st.st_size
 	);
 	delete[] dirname;

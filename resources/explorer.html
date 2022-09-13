@@ -6629,26 +6629,16 @@
 </head>
 <body>
 <div class="filemanager">
-    <form method="POST" action="/explorer/%s" style="display: none;" id="forwardform%s">
-    </form>
-
     <div class="breadcrumbs">
         <span class="folderName">
-            <a onclick="document.getElementById('forwardform%s').submit();"><i class="userlogin">%s &gt;</i>HOME/%s/</a>%s
+            <a onclick="window.location.href = '/explorer/' + encodeURIComponent('%s')"><i class="userlogin">%s &gt;</i>HOME/%s/</a>%s
         </span>
     </div>
 
 
-    <form method="POST" action="/uploader/%s" style="display: none;" id="forwardform-upload%s">
-    </form>
+    <a class="upload" onclick="window.location.href = '/uploader/' + encodeURIComponent('%s')">+</a>
 
-    <a class="upload" onclick="document.getElementById('forwardform-upload%s').submit();">+</a>
-
-
-    <form method="POST" action="/explorer/" style="display: none;" id="forwardform-toroot%s">
-    </form>
-
-    <a class="toroot" onclick="document.getElementById('forwardform-toroot%s').submit();">R</a>
+    <a class="toroot" onclick="window.location.href = '/explorer/'">R</a>
 
 
     <div id="move-to">
