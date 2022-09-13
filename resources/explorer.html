@@ -6600,11 +6600,14 @@
                     closeOnCancel: true
                 },
                 function (isConfirm) {
-                    if (isConfirm && submit_delete_item != null) {
+                    if (!isConfirm) {
+                        submit_delete_item = null;
+                        submit_delete_reload = null;
+                    } else if (submit_delete_item != null) {
                         submit_delete_item();
                         swal({title: "Item Removed!", text: "Item was removed permanently!", type: "success"},
                             function (isConfirm) {
-                                if (isConfirm && submit_delete_reload != null) {
+                                if (submit_delete_reload != null) {
                                     submit_delete_reload();
                                 }
                             }
@@ -6778,25 +6781,17 @@
     });
 
     scope.addEventListener("click", (e) => {
-        if (e.target.offsetParent !== contextMenuNative) {
-            contextMenu.removeClass("visible");
+        contextMenu.removeClass("visible");
 
-            submit_delete_item = null;
-            submit_delete_reload = null;
-            submit_download_item = null;
-            copy_link_item = null;
-        }
+        submit_download_item = null;
+        copy_link_item = null;
 
         if (e.target.offsetParent !== moveToNative) {
             moveTo.removeClass("visible");
-
-            submit_move_item = null;
         }
 
         if (e.target.offsetParent !== copyToNative) {
             copyTo.removeClass("visible");
-
-            submit_copy_item = null;
         }
     });
 
