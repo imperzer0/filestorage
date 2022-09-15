@@ -385,3 +385,37 @@ function Extensions:QRCodeGenerator(path)
     end
     return 404, "Path \"" .. path .. "\" not found. You can only access / and empty path."
 end
+
+function Extensions:PerceptronDemo(path)
+    if PERC == nil then
+        PERC = Perceptron.new({ 2, 3, 1 }, -1.0, 0.5)
+    end
+
+    local page = ""
+    local i = 0
+    local lr = 0.1
+    while i < 1000 do
+        local result
+        result = PERC:use({ 1, 0 })
+        PERC:train({ 1 }, lr)
+        result = PERC:use({ 0, 1 })
+        PERC:train({ 1 }, lr)
+        result = PERC:use({ 0, 0 })
+        PERC:train({ 0 }, lr)
+        result = PERC:use({ 1, 1 })
+        PERC:train({ 0 }, lr)
+        i = i + 1
+    end
+
+    local result
+    result = PERC:use({ 1, 0 })
+    page = page .. tostring(result[1]) .. " => 1<br/>"
+    result = PERC:use({ 0, 1 })
+    page = page .. tostring(result[1]) .. " => 1<br/>"
+    result = PERC:use({ 0, 0 })
+    page = page .. tostring(result[1]) .. " => 0<br/>"
+    result = PERC:use({ 1, 1 })
+    page = page .. tostring(result[1]) .. " => 0<br/>"
+
+    return 200, page
+end
