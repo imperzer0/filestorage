@@ -53,10 +53,10 @@ sha256sums=(${sha256sums[@]} "a0f97a894547cf98cbfc9b276fc924288658c772cdfe3e6a8d
 external=(${external[@]} "https://raw.githubusercontent.com/cesanta/mongoose/d5993ba27ece4b406c230eca63b76dd5d2c28a2d/mongoose.h")
 sha256sums=(${sha256sums[@]} "a486f3d5baa0d31c576b24f909ede017331f5b104dc3eac945aceafe40f8fe67")
 
-external=(${external[@]} "https://raw.githubusercontent.com/imperzer0/strscan/master/strscan.c")
+external=(${external[@]} "https://raw.githubusercontent.com/imperzer0/strscan/2f263154679e67ed44aa7fc4ae65829547e8290b/strscan.c")
 sha256sums=(${sha256sums[@]} "ec146de96056e2a058bf3d965d93eb3be1c84fc971d572e7c95a98cb6dff9907")
 
-external=(${external[@]} "https://raw.githubusercontent.com/imperzer0/strscan/master/strscan.h")
+external=(${external[@]} "https://raw.githubusercontent.com/imperzer0/strscan/2f263154679e67ed44aa7fc4ae65829547e8290b/strscan.h")
 sha256sums=(${sha256sums[@]} "50e97478733949f8a01c4d5178919c5c51a33df0d22c10762339570ba985bf9e")
 
 external=(${external[@]} "https://raw.githubusercontent.com/nayuki/QR-Code-generator/720f62bddb7226106071d4728c292cb1df519ceb/cpp/qrcodegen.cpp")
