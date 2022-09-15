@@ -18,3 +18,13 @@
 # qr code generator library
 /qrcodegen.cpp
 /qrcodegen.hpp
+
+# perceptron library
+/layer.cpp
+/layer.hpp
+
+/matrix.cpp
+/matrix.hpp
+
+/perceptron.cpp
+/perceptron.hpp
