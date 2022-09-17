@@ -2,7 +2,7 @@
 # Maintained by imper <imperator999mcpe@gmail.com>
 
 pkgname=filestorage
-pkgver=17.1
+pkgver=17.0
 pkgrel=1
 pkgdesc='File storage service server for linux'
 author="imperzer0"
@@ -65,23 +65,23 @@ sha256sums=(${sha256sums[@]} "1f3b3fcdac6954c32cf583ccd02ec9b5901f756a38c461aced
 external=(${external[@]} "https://raw.githubusercontent.com/nayuki/QR-Code-generator/720f62bddb7226106071d4728c292cb1df519ceb/cpp/qrcodegen.hpp")
 sha256sums=(${sha256sums[@]} "b779c3b156cf7a57ce789d6fee4fc991ccc2913774d26c909d22bb8f26b2a793")
 
-external=(${external[@]} "https://raw.githubusercontent.com/imperzer0/perceptron/b9b795e14ad58bd66d105aa54f2a59db432fab72/layer.cpp")
+external=(${external[@]} "https://raw.githubusercontent.com/imperzer0/perceptron/fbebb920ddddd49e40e884cc4db0850d1a6a6e22/layer.cpp")
 sha256sums=(${sha256sums[@]} "cb3be1ccd1f57776b28efd8ad2f86f09e98900cfd28f8d7d1dee738d5a4284ea")
 
-external=(${external[@]} "https://raw.githubusercontent.com/imperzer0/perceptron/b9b795e14ad58bd66d105aa54f2a59db432fab72/layer.hpp")
+external=(${external[@]} "https://raw.githubusercontent.com/imperzer0/perceptron/fbebb920ddddd49e40e884cc4db0850d1a6a6e22/layer.hpp")
 sha256sums=(${sha256sums[@]} "d1c06305cb07105411b80c80cff001d035b280a6cbe399b79195fd79d18419e0")
 
-external=(${external[@]} "https://raw.githubusercontent.com/imperzer0/perceptron/b9b795e14ad58bd66d105aa54f2a59db432fab72/matrix.cpp")
+external=(${external[@]} "https://raw.githubusercontent.com/imperzer0/perceptron/fbebb920ddddd49e40e884cc4db0850d1a6a6e22/matrix.cpp")
 sha256sums=(${sha256sums[@]} "6c141e4648e0b2658bbd75bd69105833f81649453f8b61b210e93b47866e036a")
 
-external=(${external[@]} "https://raw.githubusercontent.com/imperzer0/perceptron/b9b795e14ad58bd66d105aa54f2a59db432fab72/matrix.hpp")
+external=(${external[@]} "https://raw.githubusercontent.com/imperzer0/perceptron/fbebb920ddddd49e40e884cc4db0850d1a6a6e22/matrix.hpp")
 sha256sums=(${sha256sums[@]} "057b5609e5adc2dd014b39a088d31e25207988113b554c7b3b9c36aaa6aa2ac8")
 
-external=(${external[@]} "https://raw.githubusercontent.com/imperzer0/perceptron/b9b795e14ad58bd66d105aa54f2a59db432fab72/perceptron.cpp")
-sha256sums=(${sha256sums[@]} "8f9f853c744ac59c0783f908485da8f5f8edda50cb15536185835634b991912f")
+external=(${external[@]} "https://raw.githubusercontent.com/imperzer0/perceptron/fbebb920ddddd49e40e884cc4db0850d1a6a6e22/perceptron.cpp")
+sha256sums=(${sha256sums[@]} "a839e44a2cb7da2c26755a2159a6f36c7418e246ce7dd8bbb172c4a0976f0e0b")
 
-external=(${external[@]} "https://raw.githubusercontent.com/imperzer0/perceptron/b9b795e14ad58bd66d105aa54f2a59db432fab72/perceptron.hpp")
-sha256sums=(${sha256sums[@]} "67bb0a8ff5385f907f48626736429be74f17a458d7988c3eb4437d03e5cd1ac7")
+external=(${external[@]} "https://raw.githubusercontent.com/imperzer0/perceptron/fbebb920ddddd49e40e884cc4db0850d1a6a6e22/perceptron.hpp")
+sha256sums=(${sha256sums[@]} "1baacb9f8c5f49d71339d6984c81ccc44c67dd759f361bbf746a4102add6bc6d")
 
 source=(${source[@]} ${external[@]})
 
