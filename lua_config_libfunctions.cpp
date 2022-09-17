@@ -7,14 +7,12 @@
 
 #include "lua_config_libfunctions.h"
 #include "qrcodegen.cpp"
-#include <string>
-#include <sstream>
+#include "server.h"
 #include <map>
 
 
 #ifndef EXTERNAL_TEST
 
-#include "mongoose.h"
 #include "Gen_QR.h"
 #include "perceptron.hpp"
 
@@ -24,27 +22,6 @@
 
 #undef LUA_ASSERT
 #define LUA_ASSERT(L, expr, ret_expr) if (Assert(L, expr)) return ret_expr
-
-
-#ifndef EXTERNAL_TEST
-
-inline static void print_lua_error(lua_State* L) { MG_ERROR(("[Lua] reported an error: %s", lua_tostring(L, -1))); }
-
-#else
-
-inline static void print_lua_error(lua_State* L) { fprintf(stderr, "[Lua] reported an error: %s", lua_tostring(L, -1)); }
-
-#endif
-
-inline static bool Assert(lua_State* L, int r)
-{
-	if (r != LUA_OK)
-	{
-		print_lua_error(L);
-		return true;
-	}
-	return false;
-}
 
 static void dumpstack(lua_State* L)
 {
@@ -75,6 +52,58 @@ static void dumpstack(lua_State* L)
 }
 
 
+namespace ac
+{
+	enum : LUA_INTEGER
+	{
+		sigm = 0,
+		sigm_scaled,
+		tanh,
+		swish,
+		size
+	};
+}
+
+inline static void lua_pushacfn(lua_State* L, LUA_INTEGER ac, const char* name)
+{
+	lua_pushinteger(L, ac);
+	lua_setfield(L, -2, name);
+}
+
+inline static neural::neural_function get_acfn(LUA_INTEGER ac)
+{
+	switch (ac)
+	{
+		case ac::sigm:
+			return neural::sigm_activation;
+		case ac::sigm_scaled:
+			return neural::sigm_scaled_activation;
+		case ac::tanh:
+			return neural::tanh_activation;
+		case ac::swish:
+			return neural::swish_activation;
+		default:
+			return nullptr;
+	}
+}
+
+inline static neural::neural_function get_deacfn(LUA_INTEGER ac)
+{
+	switch (ac)
+	{
+		case ac::sigm:
+			return neural::sigm_deactivation;
+		case ac::sigm_scaled:
+			return neural::sigm_scaled_deactivation;
+		case ac::tanh:
+			return neural::tanh_deactivation;
+		case ac::swish:
+			return neural::swish_deactivation;
+		default:
+			return nullptr;
+	}
+}
+
 
 int GenQR_SVG(lua_State* L);
 
@@ -98,12 +127,23 @@ void register_lib_functions(lua_State* L)
 	lua_pushcfunction(L, Perceptron_new);
 	lua_setfield(L, -2, "new");
 	
+	lua_createtable(L, 0, ac::size);
+	
+	lua_pushacfn(L, ac::sigm, "sigm");
+	lua_pushacfn(L, ac::sigm_scaled, "sigm_scaled");
+	lua_pushacfn(L, ac::tanh, "tanh");
+	lua_pushacfn(L, ac::swish, "swish");
+	
+	lua_setfield(L, -2, "acf");
+	
 	lua_setglobal(L, "Perceptron");
 }
 
 
 int GenQR_SVG(lua_State* L)
 {
+	if (log_level[0] == '4') dumpstack(L);
+	
 	auto text = luaL_checkstring(L, -4);
 	auto border = luaL_checkinteger(L, -3);
 	auto bg = luaL_checkstring(L, -2);
@@ -116,15 +156,15 @@ int GenQR_SVG(lua_State* L)
 size_t last_address = 0;
 std::map<size_t, neural::perceptron> perc_heap;
 
-LUA_INTEGER create_instance(const std::vector<size_t>& sizes, neural::neuron_t min, neural::neuron_t max)
+LUA_INTEGER create_instance(const std::vector<size_t>& sizes, neural::neuron_t min, neural::neuron_t max, LUA_INTEGER ac)
 {
 	perc_heap.insert(
 			decltype(perc_heap)::value_type{
 					++last_address,
-					{ sizes, min, max, neural::sigm_activation, neural::sigm_deactivation }
+					{ sizes, min, max, get_acfn(ac), get_deacfn(ac) }
 			}
 	);
-	return last_address;
+	return (LUA_INTEGER)last_address;
 }
 
 neural::perceptron* access_instance(LUA_INTEGER address)
@@ -159,26 +199,31 @@ void create_lua_object(lua_State* L, LUA_INTEGER address)
 
 int Perceptron_new(lua_State* L)
 {
-	auto min = luaL_checknumber(L, -2);
-	auto max = luaL_checknumber(L, -1);
+	if (log_level[0] == '4') dumpstack(L);
 	
-	auto len = lua_rawlen(L, -3);
+	auto min = luaL_checknumber(L, -3);
+	auto max = luaL_checknumber(L, -2);
+	auto ac = luaL_checkinteger(L, -1);
+	
+	auto len = lua_rawlen(L, -4);
 	
 	std::vector<size_t> sizes;
 	for (LUA_INTEGER i = 1; i <= len; ++i)
 	{
-		lua_rawgeti(L, -3, i);
+		lua_rawgeti(L, -4, i);
 		sizes.emplace_back(luaL_checkinteger(L, -1));
 		lua_pop(L, 1);
 	}
 	
-	create_lua_object(L, create_instance(sizes, min, max));
+	create_lua_object(L, create_instance(sizes, min, max, ac));
 	
 	return 1;
 }
 
 int Perceptron_use(lua_State* L)
 {
+	if (log_level[0] == '4') dumpstack(L);
+	
 	lua_getfield(L, -2, "ref");
 	
 	auto address = luaL_checkinteger(L, -1);
@@ -196,11 +241,11 @@ int Perceptron_use(lua_State* L)
 	
 	auto results = access_instance(address)->use(std::move(inputs));
 	
-	lua_createtable(L, results.size(), 0);
+	lua_createtable(L, static_cast<int>(results.size()), 0);
 	
-	for (size_t i = 0; i < results.size(); ++i)
+	for (int i = 0; i < results.size(); ++i)
 	{
-		lua_pushnumber(L, results[i]);
+		lua_pushnumber(L, static_cast<LUA_NUMBER>(results[i]));
 		lua_rawseti(L, -2, i + 1);
 	}
 	
@@ -209,6 +254,8 @@ int Perceptron_use(lua_State* L)
 
 int Perceptron_train(lua_State* L)
 {
+	if (log_level[0] == '4') dumpstack(L);
+	
 	lua_getfield(L, -3, "ref");
 	
 	auto address = luaL_checkinteger(L, -1);
@@ -235,6 +282,8 @@ int Perceptron_train(lua_State* L)
 
 int Perceptron_destroy(lua_State* L)
 {
+	if (log_level[0] == '4') dumpstack(L);
+	
 	lua_getfield(L, -1, "ref");
 	
 	LUA_INTEGER address = luaL_checkinteger(L, -1);

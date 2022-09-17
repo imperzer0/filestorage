@@ -388,7 +388,7 @@ end
 
 function Extensions:PerceptronDemo(path)
     if PERC == nil then
-        PERC = Perceptron.new({ 2, 3, 1 }, -1.0, 0.5)
+        PERC = Perceptron.new({ 2, 3, 1 }, -1.0, 0.5, Perceptron.acf.swish)
     end
 
     local page = ""
